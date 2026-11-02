@@ -5,7 +5,8 @@ Status: planning only. All milestones below are incomplete. Implement in small l
 ## 1. Foundation and domain
 
 - [ ] Agree the initial strategy parameters, configurable funding/allocation, sizing, loss policy, and fee assumptions.
-- [ ] Set up Python 3.12+, pinned dependencies, lint/type/test checks, and SQLite migrations.
+- [ ] Set up Python 3.12+, pinned dependencies, lint/type/test checks, and PostgreSQL persistence using SQLAlchemy 2, Psycopg 3, and Alembic migrations.
+- [ ] Add the PostgreSQL Compose service and isolated PostgreSQL integration tests for migrations, rollback, allocation locking, constraints, and duplicate-owner rejection.
 - [ ] Keep application entry points compatible with container startup; add Dockerfiles and compose.yaml once runnable services exist.
 - [ ] Define market, strategy-instance, execution-account/mode, configuration-version, order, and fill identities.
 - [ ] Define small strategy and execution interfaces without hardcoded pair, interval, or budget.
@@ -41,15 +42,15 @@ Acceptance: displayed amounts match the ledger; errors and rejected commands are
 
 ## 5. Docker Compose and continuous hosting
 
-- [ ] Package Next.js and the Python backend as separate production Compose services with pinned builds and an internal API connection.
+- [ ] Package Next.js, the Python backend, and PostgreSQL as three Compose services with pinned builds and internal API/database connections.
 - [ ] Run one backend process/API worker and one trading-loop owner; keep trading independent of frontend restarts.
-- [ ] Add backend-only persistent storage, health checks, graceful shutdown, restart policies, and bounded container logs.
+- [ ] Add a database-owned persistent volume, database/backend/frontend health checks, one migration step, graceful shutdown, restart policies, and bounded container logs. Do not expose the database port by default.
 - [ ] Verify `docker compose config`, image builds, startup, health, API routing, and stop/start without lost records or duplicate trades.
 - [ ] Choose one server; configure HTTPS/authentication, secrets injection, and off-volume backup storage.
-- [ ] Add automatic SQLite-consistent backups and a documented restore command in README.md.
+- [ ] Add automatic pg_dump backups to separate storage and a verified pg_restore procedure in README.md; do not copy a live database volume as a backup.
 - [ ] Verify restart, disk persistence, restore, and log rotation independently of trade retention.
 
-Acceptance: docker compose up -d --build starts the application; frontend restart leaves trading running, and backend restart/normal down/up preserves state and reconciles without resetting capital or replaying trades. Verify backup restore separately. Do not use volume deletion as cleanup. Deploy only when authorized.
+Acceptance: docker compose up -d --build starts the application; frontend restart leaves trading running, and backend/database restart and normal down/up preserve state and reconciles without resetting capital or replaying trades. Verify backup restore separately. Do not use volume deletion as cleanup. Deploy only when authorized.
 
 ## 6. Multiple markets and strategies
 

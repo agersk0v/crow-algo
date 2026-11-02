@@ -2,7 +2,7 @@
 
 ## Shape
 
-One Python trading application, one SQLite database, and a web dashboard on one server. Keep strategy, market data, risk, execution, persistence, and presentation separate. Avoid distributed services and a general plugin framework.
+One Python trading application, one PostgreSQL database, and a web dashboard on one server. Keep strategy, market data, risk, execution, persistence, and presentation separate. Avoid distributed services and a general plugin framework.
 
 Flow: market data → strategy signal → allocation/risk checks → order intent → execution/reconciliation → persisted state → dashboard.
 
@@ -17,7 +17,7 @@ These are planned dependencies, not packages already installed in this specifica
 | CCXT (Python) | Exchange adapter for candles, bid/ask quotes, market metadata, and later private order/balance operations | Initially Kraken's public REST API; additional exchanges through explicit adapters/configuration |
 | FastAPI + Pydantic | Backend HTTP API and typed validation of settings, controls, and responses | Persisted bot state and validated user input |
 | Uvicorn | Run the FastAPI application with one worker | No market data; hosts the API and application lifecycle |
-| Python sqlite3 + SQLite | Transactions, persisted accounting, configuration, and activity history | Bot decisions, execution results, and validated market observations |
+| PostgreSQL + SQLAlchemy 2 + Psycopg 3 + Alembic | Database server, Python database access/connection pooling, and versioned schema migrations | Bot decisions, execution results, and validated market observations |
 | Python Decimal and logging | Precise monetary arithmetic and structured operational logging | Application calculations and events; no external data feed |
 | Next.js + React + TypeScript | Dashboard, routing, and typed frontend components | FastAPI responses; no direct exchange calls or database access |
 | Tailwind CSS + shadcn/ui | Styling and accessible UI components | Presentation only |
@@ -48,15 +48,17 @@ Use one trading-loop owner to serialize financial state changes and control comm
 
 Maintain separate strategy ledgers and ownership of quantities. A shared risk layer prevents double allocation/spending across instances. Quote polling and order reconciliation can run more frequently than closed-candle strategy evaluation.
 
-Keep network calls outside SQLite write transactions. Persist intent before external submission and reconcile after it. An unknown live outcome blocks conflicting action until resolved; never blindly resubmit. Support pending, partial, filled, cancelled, rejected, and unknown outcomes when implementing live execution.
+Keep network calls outside database write transactions. Persist intent before external submission and reconcile after it. An unknown live outcome blocks conflicting action until resolved; never blindly resubmit. Support pending, partial, filled, cancelled, rejected, and unknown outcomes when implementing live execution.
 
 ## Storage and recovery
 
-Use SQLite with explicit schema migrations, indexes, short transactions, and one financial writer. Persist execution/strategy accounts, allocations, configuration versions, candles, decisions, orders, fills, positions, financial events, equity samples, control commands, and heartbeat.
+Use PostgreSQL with SQLAlchemy 2, Psycopg 3, Alembic migrations, indexes, short transactions, and one trading-loop owner initially. Persist execution/strategy accounts, allocations, configuration versions, candles, decisions, orders, fills, positions, financial events, equity samples, control commands, and heartbeat.
 
-Use Decimal for accounting/precision and UTC timestamps. Store the signal inputs and quote evidence needed to explain each trade without a separate research snapshot system. Separate paper and live accounting; simulated capital never counts as exchange funds.
+Use Decimal in Python and PostgreSQL NUMERIC columns with precision/scale chosen for supported assets; reject overflow and unintended rounding. Use TIMESTAMPTZ with UTC application timestamps. Store the signal inputs and quote evidence needed to explain each trade without a separate research snapshot system. Separate paper and live accounting; simulated capital never counts as exchange funds.
 
-Commit local financial changes atomically. Reconcile cash, reservations, fills, and owned quantities on restart. Live adapters additionally reconcile exchange orders and balances, including partial fills and external/manual activity. Preserve records; do not reset accounts to recover.
+Use unique constraints for idempotency and row locks when reserving shared funds. Enforce trading-loop ownership with a PostgreSQL session advisory lock on a dedicated connection; stop trading if that connection is lost. Run Alembic once before backend readiness, not concurrently in API workers. Use bounded connection pools, transaction timeouts, and separate runtime and migration database roles.
+
+Commit financial changes atomically. Reconcile cash, reservations, fills, and owned quantities on restart. Live adapters additionally reconcile exchange orders and balances, including partial fills and external/manual activity. Preserve records; do not reset accounts to recover.
 
 Persist structured operational logs with severity, timestamp, market, strategy instance, and order IDs where relevant. Rotate operational logs independently of financial records. Retain periodic equity samples for charts, including unchanged periods. Never expose secrets.
 
@@ -68,7 +70,7 @@ Build a responsive dashboard: overview, positions/orders/trades, strategy config
 
 Run Next.js and the Python backend as separate Compose services. Route browser API calls through a same-origin /api path to FastAPI; keep backend addresses internal to the Compose network. Use short polling initially; add server-sent events for logs/status only if needed. Next.js must not execute trading logic or own financial storage. Keep trading independent of browser sessions, UI requests, and frontend restarts.
 
-The backend validates configuration and records commands for the trading loop; the browser never accesses SQLite or exchange credentials directly. Authenticate access, protect write requests against CSRF when using cookies, and avoid unsafe rendering of log/provider text.
+The backend validates configuration and records commands for the trading loop; the browser never accesses PostgreSQL or exchange credentials directly. Authenticate access, protect write requests against CSRF when using cookies, and avoid unsafe rendering of log/provider text.
 
 ## Docker Compose and hosting
 
@@ -76,14 +78,15 @@ Docker Compose is the standard startup workflow on one server:
 
 - `frontend`: production Next.js build, serving the dashboard and forwarding /api requests to the backend.
 - `backend`: FastAPI plus one supervised trading loop in a single application process. Use exactly one API worker and no development auto-reload so startup cannot launch duplicate trading loops.
-- One named data volume mounted only by the backend for SQLite and durable application history. The frontend has no database or exchange-secret access.
-- Health checks for both services; the frontend waits for backend readiness on initial startup. Health/readiness distinguishes unavailable or stale trading data from an HTTP server merely responding.
+- `db`: PostgreSQL with a pinned supported major version, a database-owned named volume, and a `pg_isready` health check. Do not publish the database port to the host by default.
+- Only the backend connects to PostgreSQL over the internal Compose network using runtime-injected credentials. The frontend has no database credentials, database volume, or exchange-secret access.
+- Health checks for all three services; the backend waits for database health and completed migrations, and the frontend waits for backend readiness. Database outages block order processing until connectivity and reconciliation recover. Health/readiness distinguishes unavailable or stale trading data from an HTTP server merely responding.
 - `restart: unless-stopped` and graceful shutdown, with reconciliation before resumed order processing. Restart policies recover exited containers; an unhealthy check alone does not restart a process.
 - Structured stdout/stderr logs with bounded Docker log rotation, plus durable searchable operational history for the dashboard.
 - Ignored local configuration and runtime secret injection; never bake credentials into images, commit them, or expose them through browser-visible Next.js variables.
 
-Expose the dashboard only on localhost by default. Public hosting adds HTTPS and authentication before exposing it. Use SQLite-consistent backups to separate storage and verify restore. Normal Compose shutdown/rebuild must preserve data; deleting volumes is never routine cleanup.
+Expose the dashboard only on localhost by default. Public hosting adds HTTPS and authentication before exposing it. Use scheduled PostgreSQL-consistent logical backups (pg_dump in custom format) to separate storage and verify pg_restore into an isolated database. Do not copy a running database volume as a backup or treat a volume as backup protection. Back up required configuration separately. Normal Compose shutdown/rebuild must preserve data; deleting volumes is never routine cleanup.
 
-Pin container/runtime versions and add Compose/Docker build files when runnable services exist. Do not add Kubernetes or extra database/queue services. Do not rely on a development chat session for continuous hosting.
+Pin container/runtime versions and add Compose/Docker build files when runnable services exist. Use PostgreSQL as the single database; do not add Kubernetes or queue services. Do not rely on a development chat session for continuous hosting.
 
-Test closed-candle timing, fee/rounding calculations, reservations, isolation, risk rejections, stale data, pause behavior, rollback, and restart deduplication. Future live and multi-instance milestones need dedicated recovery/isolation tests. Reuse small proven functions/tests from crow-trading without copying its daily scanner architecture.
+Use PostgreSQL integration tests for migrations, constraints, transactions, locking, and restart recovery. Test closed-candle timing, fee/rounding calculations, reservations, isolation, risk rejections, stale data, pause behavior, rollback, and restart deduplication. Future live and multi-instance milestones need dedicated recovery/isolation tests. Reuse small proven functions/tests from crow-trading without copying its daily scanner architecture.
