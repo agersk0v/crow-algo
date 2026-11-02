@@ -31,6 +31,7 @@ Do not create additional documentation files without an explicit user instructio
 
 ## Scope and implementation
 
+- Do not expand scope merely because an alternative or future feature is mentioned. Distinguish discussion, an agreed requirement, and authorization to implement.
 - Start with one spot pair and one paper strategy instance on hourly candles, but use explicit market, strategy-instance, allocation-account, and execution-mode identities so future multiple markets, strategies, and live execution fit the same core.
 - Keep Python modules focused. Keep strategy, risk, execution, storage, and presentation separate without adding unnecessary abstraction.
 - Add strategies through the common interface; do not build a general plugin framework.
