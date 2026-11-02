@@ -24,7 +24,7 @@ Update the appropriate existing file instead. Do not add documentation beyond th
 - Reuse proven logic selectively from crow-trading. Do not inherit its architecture or expand scope incidentally.
 - Preserve unrelated user work. Inspect relevant code and tests before editing.
 - Use Python 3.12+, typed interfaces, pinned dependencies, and deterministic tests.
-- Update these existing documents when behavior changes. Keep setup and operation commands in README.md accurate and verified.
+- Every PR must review and clean up the existing documentation: update changed behavior and implementation status, remove obsolete or duplicated text, fix broken links, and keep setup/operation commands accurate and verified. Keep documentation concise and distinguish planned work from implemented features. If no edits are needed after review, say so in the PR description; do not make cosmetic edits just to satisfy this rule. Use only the five permitted documentation files.
 - Test meaningful behavior changes and run applicable lint, formatting, type, and test checks. Report failures and checks not run.
 
 ## Trading and records
