@@ -8,11 +8,11 @@ One Python trading application, one PostgreSQL database, and a web dashboard on 
 
 Flow: market data → strategy signal → allocation/risk checks → order intent → execution/reconciliation → persisted state → dashboard.
 
-This is a planned architecture; nothing is implemented yet.
+Typed domain/configuration contracts and validation are implemented. Runtime services and trading remain planned; see [implementation](implementation.md) for delivery status.
 
 ## Major packages and data sources
 
-These are planned dependencies, not packages already installed in this specification-only repository. Pin versions in the appropriate lockfiles when implementation begins.
+Pydantic is the current runtime dependency; pytest, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. Other dependencies below are planned and will be added only in their owning milestones.
 
 | Package or component | Responsibility | Source of data |
 | --- | --- | --- |
@@ -43,6 +43,18 @@ Use REST polling initially with CCXT rate limiting and bounded retries. WebSocke
 - **Strategy interface:** pure evaluation of validated closed candles, returning enter/exit/hold and a reason. Strategies never submit orders, size positions, access secrets, or write storage.
 - **Execution interface:** submit intent, query/reconcile order, and cancel. Paper first; live later. Preserve client intent IDs, exchange order IDs, fills, and explicit lifecycle states.
 - **Risk:** enforce instance allocation, position limits, shared exposure, reservations, fees, precision, and exchange minimums. Use a common quote currency initially.
+
+### Configuration and contracts
+
+`src/crow_algo/domain.py` defines validated value/message types; `config.py` defines configuration and eligibility validation; `interfaces.py` declares strategy/execution protocols without implementations.
+
+A configuration has schema/version numbers and collections of markets, execution accounts, allocation accounts, and strategy instances. Execution accounts specify exchange, paper/live mode, common quote currency, and configured budget. Each strategy references its own allocation account, which references an execution account. These records describe limits and ownership, not actual funding or balances.
+
+Validate unique IDs and market identities, references, exchange/currency compatibility, separate strategy allocations, and allocation totals per execution account. Amounts accept decimal strings, integers, or Decimal values; reject binary floats, booleans, non-finite values, and negatives. Allocation-total comparisons are exact independently of the Decimal arithmetic context. Zero budgets are valid unfunded configuration; future order checks must still reject unaffordable trades. Timestamps require timezone information and normalize to UTC. Reject unknown configuration fields.
+
+Timeframe syntax accepts positive integer minute/hour/day/week intervals; provider support is checked when market-data integration exists. Strategy parameters are finite JSON data, with strategy-specific validation deferred to the strategy implementation. Pydantic records prevent field reassignment, but nested parameter dictionaries are not deeply immutable; future consumers must copy/validate inputs before use.
+
+Configuration can describe future instances and live accounts. The separate eligibility check accepts exactly one selected momentum-v1 instance, one market, and a paper execution account. It rejects missing selections and unsupported activation; it does not implement a strategy, check provider capabilities, fund accounts, or start trading. Execution protocols expose submit/reconcile/cancel messages, including partial/unknown statuses for later adapters, without defining fill policy yet.
 
 ## Runtime and allocation
 
