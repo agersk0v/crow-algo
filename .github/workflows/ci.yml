@@ -44,3 +44,21 @@ jobs:
         run: uv run --locked mypy
       - name: Test
         run: uv run --locked pytest --require-postgres
+      - name: Build and start disposable Compose installation
+        env:
+          CROW_API_PORT: "18004"
+        run: |
+          python scripts/init_secrets.py
+          docker compose -p crow-test-ci config --quiet
+          docker compose -p crow-test-ci up -d --build --wait --wait-timeout 90
+      - name: Verify Compose recovery and persistence
+        env:
+          CROW_API_PORT: "18004"
+          CROW_COMPOSE_TEST_PROJECT: crow-test-ci
+        run: python scripts/check_compose.py
+      - name: Collect Compose logs
+        if: failure()
+        run: docker compose -p crow-test-ci logs --no-color --tail=100
+      - name: Remove disposable Compose installation
+        if: always()
+        run: docker compose -p crow-test-ci down --volumes

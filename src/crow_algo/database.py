@@ -1,6 +1,7 @@
 """Bounded PostgreSQL access and append-only configuration persistence."""
 
 import os
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import (
@@ -48,9 +49,11 @@ class PersistenceError(RuntimeError):
 
 
 def database_url(value: str | URL | None = None, *, migration: bool = False) -> URL:
+    password_file: str | None = None
     if value is None:
         variable = "CROW_MIGRATION_DATABASE_URL" if migration else "CROW_DATABASE_URL"
         value = os.environ.get(variable)
+        password_file = os.environ.get(variable.removesuffix("_URL") + "_PASSWORD_FILE")
     if not value:
         raise PersistenceError("database connection is not configured")
     try:
@@ -59,6 +62,18 @@ def database_url(value: str | URL | None = None, *, migration: bool = False) -> 
         raise PersistenceError("invalid database connection configuration") from None
     if url.drivername != "postgresql+psycopg":
         raise PersistenceError("database URL must use postgresql+psycopg")
+    if password_file:
+        if url.password is not None:
+            raise PersistenceError(
+                "configure a password file or URL password, not both"
+            )
+        try:
+            password = Path(password_file).read_text().rstrip("\r\n")
+        except (OSError, UnicodeError):
+            raise PersistenceError("database password file is unreadable") from None
+        if not password:
+            raise PersistenceError("database password file is empty")
+        url = url.set(password=password)
     return url
 
 

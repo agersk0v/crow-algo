@@ -8,11 +8,11 @@ One Python trading application, one PostgreSQL database, and a web dashboard on 
 
 Flow: market data → strategy signal → allocation/risk checks → order intent → execution/reconciliation → persisted state → dashboard.
 
-Typed contracts, validation, PostgreSQL configuration persistence/migrations, and ownership locking are implemented. Runtime services and trading remain planned; see [implementation](implementation.md) for delivery status.
+Typed contracts, validation, PostgreSQL configuration persistence/migrations, ownership primitive, and health-only API/Compose startup are implemented. Trading and frontend remain planned; see [implementation](implementation.md) for delivery status.
 
 ## Major packages and data sources
 
-Pydantic, SQLAlchemy 2, Psycopg 3, and Alembic are current dependencies; pytest, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. FastAPI and the other service/market-data dependencies below remain planned.
+Pydantic, SQLAlchemy 2, Psycopg 3, Alembic, FastAPI, and Uvicorn are current dependencies; pytest/httpx, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. Market-data and frontend dependencies remain planned.
 
 | Package or component | Responsibility | Source of data |
 | --- | --- | --- |
@@ -104,6 +104,10 @@ Docker Compose is the standard startup workflow on one server:
 - `restart: unless-stopped` and graceful shutdown, with reconciliation before resumed order processing. Restart policies recover exited containers; an unhealthy check alone does not restart a process.
 - Structured stdout/stderr logs with bounded Docker log rotation, plus durable searchable operational history for the dashboard.
 - Ignored local configuration and runtime secret injection; never bake credentials into images, commit them, or expose them through browser-visible Next.js variables.
+
+Currently Compose contains `db`, a one-shot `migrate` step, and `backend`; add `frontend` when it is runnable. The backend currently serves only health endpoints and does not start a trading loop or acquire trading ownership. Liveness is asynchronous and database-independent; synchronous readiness probes run in FastAPI's thread pool, checking migration heads and configuration-table access. Schema mismatch, permissions failure, or database loss returns a generic 503 without connection details. Startup constructs the pool without database writes; shutdown disposes it.
+
+The same pinned, non-root application image runs migration and backend commands. Its build context is allowlisted and excludes local credentials; an optional BuildKit `proxy_ca` mount supports trusted-proxy builds without copying session certificates into images. Compose secrets mount administrator/migration/runtime passwords only where needed. Bootstrap SQL creates roles only for a new volume. The separate migration step takes a transaction-scoped migration lock, applies upgrades and runtime grants atomically, then exits; it does not take trading ownership. The backend receives only its runtime secret. Runtime grants include migration-metadata SELECT for readiness, without schema ownership or UPDATE/DELETE privileges.
 
 Expose the dashboard only on localhost by default. Public hosting adds HTTPS and authentication before exposing it. Use scheduled PostgreSQL-consistent logical backups (pg_dump in custom format) to separate storage and verify pg_restore into an isolated database. Do not copy a running database volume as a backup or treat a volume as backup protection. Back up required configuration separately. Normal Compose shutdown/rebuild must preserve data; deleting volumes is never routine cleanup.
 

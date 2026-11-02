@@ -1,6 +1,6 @@
 # Implementation
 
-Status: configuration/contracts, PostgreSQL configuration persistence/migrations, and ownership primitive implemented; operational features remain planned. Implement in small linked issues/PRs, updating this file with actual progress and verification.
+Status: local foundation implemented through configuration/contracts, PostgreSQL persistence/migrations, ownership primitive, and health-only API/Compose. Trading, GUI, and production operation remain planned. Implement in small linked issues/PRs, updating this file with actual progress and verification.
 
 ## Open decisions and owning milestones
 
@@ -23,14 +23,14 @@ Tracked by [#1](https://github.com/agersk0v/crow-algo/issues/1), delivered seque
 - [x] Set up Python 3.12+, pinned dependencies, lint/format/type/test commands, and CI workflow.
 - [x] Add PostgreSQL configuration persistence using SQLAlchemy 2, Psycopg 3, and Alembic migrations (#3).
 - [x] Add isolated PostgreSQL integration tests for migrations, rollback, schema/role constraints, duplicate-owner rejection, release, and ownership loss.
-- [ ] Add the local PostgreSQL Compose service (#4). Financial allocation/reservation locking follows in milestone 2 when those records exist.
-- [ ] Keep application entry points compatible with container startup; add Dockerfiles and compose.yaml once runnable services exist.
+- [x] Add the local PostgreSQL/backend Compose setup and health endpoints (#4). Financial allocation/reservation locking follows in milestone 2 when those records exist.
+- [x] Add pinned non-root application image, one-shot migration/grant step, runtime secrets, health checks, and graceful lifecycle.
 - [x] Define market, strategy-instance, allocation/execution-account/mode, configuration-version, order, and fill identities.
 - [x] Define small strategy/execution interfaces and validate configuration without hardcoded pair, interval, or budget.
 
-Acceptance: validated configuration can describe multiple markets/instances, while the initial runtime enables one paper instance. Invalid allocations and unsupported combinations fail clearly.
+Acceptance: validated configuration can describe multiple markets/instances, while eligibility checks permit one paper instance. Invalid allocations and unsupported activation fail clearly. The foundation API does not run trading.
 
-Issue #2 adds contracts/eligibility validation. Issue #3 adds append-only configuration snapshots and a dedicated-session ownership primitive, with CLI migration and restricted-role integration checks. Neither starts a runtime. Local validation evidence belongs in each PR; CI must pass before merge. Full milestone completion still depends on #4.
+Issue #2 adds contracts/eligibility validation; #3 adds append-only configuration snapshots and an ownership primitive; #4 adds local startup and read-only health checks. Verification includes schema mismatch, API responsiveness during blocked probes, database outage/recovery, restart/down-up persistence, and no implicit funding/trading. Evidence belongs in each PR; CI must pass before merge.
 
 ## 2. Offline paper core
 
@@ -72,10 +72,13 @@ Acceptance: displayed amounts match the ledger; errors and rejected commands are
 
 Production acceptance depends on milestones 3–4; add local Compose infrastructure earlier as services become runnable.
 
-- [ ] Package Next.js, the Python backend, and PostgreSQL as three Compose services with pinned builds and internal API/database connections.
+- [x] Package the local backend/database with a separate migration step; no frontend or trading loop yet.
+- [ ] Add Next.js and its internal API connection when the GUI is runnable.
 - [ ] Run one backend process/API worker and one trading-loop owner; keep trading independent of frontend restarts.
-- [ ] Add a database-owned persistent volume, database/backend/frontend health checks, one migration step, graceful shutdown, restart policies, and bounded container logs. Do not expose the database port by default.
-- [ ] Verify `docker compose config`, image builds, startup, health, API routing, and stop/start without lost records or duplicate trades.
+- [x] Add database-owned persistent storage, database/backend health checks, one migration step, graceful shutdown, restart policies, and bounded container logs. Database port is internal.
+- [ ] Add frontend health checks with the GUI.
+- [x] Verify local Compose configuration/build/startup, health endpoints, database outage/recovery, and record retention across restart/down-up.
+- [ ] Verify frontend API routing and trade-safe restart after those features exist.
 - [ ] Choose one server; configure HTTPS/authentication, secrets injection, and off-volume backup storage.
 - [ ] Add automatic pg_dump backups to separate storage and a verified pg_restore procedure in README.md; do not copy a live database volume as a backup.
 - [ ] Verify restart, disk persistence, restore, and log rotation independently of trade retention.

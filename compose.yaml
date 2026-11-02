@@ -1,0 +1,81 @@
+name: crow-algo
+
+x-app: &app
+  image: crow-algo-backend:local
+  build: .
+  init: true
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  db:
+    image: postgres:17.7-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crow_algo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+      - migration_password
+      - runtime_password
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./docker/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d crow_algo"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    logging: *logging
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: [python, -m, crow_algo.migrate]
+    environment:
+      CROW_MIGRATION_DATABASE_URL: postgresql+psycopg://crow_migrate@db:5432/crow_algo
+      CROW_MIGRATION_DATABASE_PASSWORD_FILE: /run/secrets/migration_password
+    secrets:
+      - migration_password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    <<: *app
+    restart: unless-stopped
+    environment:
+      CROW_DATABASE_URL: postgresql+psycopg://crow_runtime@db:5432/crow_algo
+      CROW_DATABASE_PASSWORD_FILE: /run/secrets/runtime_password
+    secrets:
+      - runtime_password
+    ports:
+      - "127.0.0.1:${CROW_API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.build_opener(urllib.request.ProxyHandler({})).open('http://127.0.0.1:8000/health/ready', timeout=2).close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    stop_grace_period: 15s
+
+volumes:
+  database:
+
+secrets:
+  postgres_password:
+    file: ./.secrets/postgres.txt
+  migration_password:
+    file: ./.secrets/migration.txt
+  runtime_password:
+    file: ./.secrets/runtime.txt
