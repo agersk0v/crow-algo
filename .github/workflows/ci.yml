@@ -10,11 +10,26 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.7-bookworm
+        env:
+          POSTGRES_USER: postgres
+          # Disposable CI service only; not a deployment credential.
+          POSTGRES_PASSWORD: ci-only-ephemeral
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      CROW_TEST_ADMIN_URL: postgresql+psycopg://postgres:ci-only-ephemeral@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Install uv
@@ -28,4 +43,4 @@ jobs:
       - name: Type check
         run: uv run --locked mypy
       - name: Test
-        run: uv run --locked pytest
+        run: uv run --locked pytest --require-postgres

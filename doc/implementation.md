@@ -1,6 +1,6 @@
 # Implementation
 
-Status: configuration/contracts foundation implemented; operational features remain planned. Implement in small linked issues/PRs, updating this file with actual progress and verification.
+Status: configuration/contracts, PostgreSQL configuration persistence/migrations, and ownership primitive implemented; operational features remain planned. Implement in small linked issues/PRs, updating this file with actual progress and verification.
 
 ## Open decisions and owning milestones
 
@@ -21,15 +21,16 @@ Resolve each item in the implementing PR before merge, with explicit behavior, d
 Tracked by [#1](https://github.com/agersk0v/crow-algo/issues/1), delivered sequentially through #2 (contracts/configuration), #3 (PostgreSQL), and #4 (API/Compose).
 
 - [x] Set up Python 3.12+, pinned dependencies, lint/format/type/test commands, and CI workflow.
-- [ ] Add PostgreSQL persistence using SQLAlchemy 2, Psycopg 3, and Alembic migrations (#3).
-- [ ] Add the PostgreSQL Compose service and isolated PostgreSQL integration tests for migrations, rollback, allocation locking, constraints, and duplicate-owner rejection.
+- [x] Add PostgreSQL configuration persistence using SQLAlchemy 2, Psycopg 3, and Alembic migrations (#3).
+- [x] Add isolated PostgreSQL integration tests for migrations, rollback, schema/role constraints, duplicate-owner rejection, release, and ownership loss.
+- [ ] Add the local PostgreSQL Compose service (#4). Financial allocation/reservation locking follows in milestone 2 when those records exist.
 - [ ] Keep application entry points compatible with container startup; add Dockerfiles and compose.yaml once runnable services exist.
 - [x] Define market, strategy-instance, allocation/execution-account/mode, configuration-version, order, and fill identities.
 - [x] Define small strategy/execution interfaces and validate configuration without hardcoded pair, interval, or budget.
 
 Acceptance: validated configuration can describe multiple markets/instances, while the initial runtime enables one paper instance. Invalid allocations and unsupported combinations fail clearly.
 
-Issue #2 adds eligibility validation only; no runtime starts yet. Unit tests cover invalid/duplicate references, exact allocation totals, non-finite values, account compatibility, separate allocations, JSON round-trips, and rejection of unsupported activation. Local validation evidence belongs in the PR; CI must pass before merge. Full milestone completion still depends on #3 and #4.
+Issue #2 adds contracts/eligibility validation. Issue #3 adds append-only configuration snapshots and a dedicated-session ownership primitive, with CLI migration and restricted-role integration checks. Neither starts a runtime. Local validation evidence belongs in each PR; CI must pass before merge. Full milestone completion still depends on #4.
 
 ## 2. Offline paper core
 

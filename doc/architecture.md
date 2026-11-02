@@ -8,11 +8,11 @@ One Python trading application, one PostgreSQL database, and a web dashboard on 
 
 Flow: market data → strategy signal → allocation/risk checks → order intent → execution/reconciliation → persisted state → dashboard.
 
-Typed domain/configuration contracts and validation are implemented. Runtime services and trading remain planned; see [implementation](implementation.md) for delivery status.
+Typed contracts, validation, PostgreSQL configuration persistence/migrations, and ownership locking are implemented. Runtime services and trading remain planned; see [implementation](implementation.md) for delivery status.
 
 ## Major packages and data sources
 
-Pydantic is the current runtime dependency; pytest, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. Other dependencies below are planned and will be added only in their owning milestones.
+Pydantic, SQLAlchemy 2, Psycopg 3, and Alembic are current dependencies; pytest, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. FastAPI and the other service/market-data dependencies below remain planned.
 
 | Package or component | Responsibility | Source of data |
 | --- | --- | --- |
@@ -68,9 +68,15 @@ Keep network calls outside database write transactions. Persist intent before ex
 
 Use PostgreSQL with SQLAlchemy 2, Psycopg 3, Alembic migrations, indexes, short transactions, and one trading-loop owner initially. Persist execution/strategy accounts, allocations, configuration versions, candles, decisions, orders, fills, positions, financial events, equity samples, control commands, and heartbeat.
 
-Use Decimal in Python and PostgreSQL NUMERIC columns with precision/scale chosen for supported assets; reject overflow and unintended rounding. Use TIMESTAMPTZ with UTC application timestamps. Store the signal inputs and quote evidence needed to explain each trade without a separate research snapshot system. Separate paper and live accounting; simulated capital never counts as exchange funds.
+The current schema contains only `configuration_versions`: a positive BIGINT version key, a JSONB configuration snapshot, and a TIMESTAMPTZ creation time. Database checks enforce an object document, matching version, and supported schema version; application validation enforces the complete configuration contract on write/read. Snapshots keep monetary values as decimal strings, preserving exact values without prematurely introducing financial tables. Saving revalidates nested parameters, appends within the caller's transaction, and never overwrites an existing version. Persistence does not activate configuration or apply funding. Treat the version as an immutable revision of this bot's configuration.
+
+For future financial tables, use Decimal in Python and PostgreSQL NUMERIC columns with precision/scale chosen for supported assets; reject overflow and unintended rounding. Use UTC application timestamps. Store the signal inputs and quote evidence needed to explain each trade without a separate research snapshot system. Separate paper and live accounting; simulated capital never counts as exchange funds.
 
 Use unique constraints for idempotency and row locks when reserving shared funds. Enforce trading-loop ownership with a PostgreSQL session advisory lock on a dedicated connection; stop trading if that connection is lost. Run Alembic once before backend readiness, not concurrently in API workers. Use bounded connection pools, transaction timeouts, and separate runtime and migration database roles.
+
+`OwnerLock` currently provides the ownership primitive only; no loop runs. It holds one database-wide advisory lock on an unpooled, autocommit session and physically closes that session on exit. `check()` verifies the session still holds the lock; a lost or released session permanently invalidates that handle instead of reconnecting/reacquiring. Future callers must check before protected work and stop on failure. This is not an exchange-side fence against already in-flight network requests.
+
+Connection setup bounds pool waits, connection/statement/lock/idle-transaction times and configures TCP failure detection. Persistence/ownership errors suppress SQL payloads and connection details; callers must not log connection URLs. Migrations use an explicitly supplied connection or `CROW_MIGRATION_DATABASE_URL`; runtime uses `CROW_DATABASE_URL`. The migration role owns schema objects, while the runtime role has SELECT/INSERT on snapshots only. Provisioning/grant commands belong in [README](../README.md#database-setup-and-migrations). SQLAlchemy does not create schema automatically; Alembic changes it transactionally, and destructive downgrade is unsupported.
 
 Commit financial changes atomically. Reconcile cash, reservations, fills, and owned quantities on restart. Live adapters additionally reconcile exchange orders and balances, including partial fills and external/manual activity. Preserve records; do not reset accounts to recover.
 
