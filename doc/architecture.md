@@ -8,6 +8,32 @@ Flow: market data → strategy signal → allocation/risk checks → order inten
 
 This is a planned architecture; nothing is implemented yet.
 
+## Major packages and data sources
+
+These are planned dependencies, not packages already installed in this specification-only repository. Pin versions in the appropriate lockfiles when implementation begins.
+
+| Package or component | Responsibility | Source of data |
+| --- | --- | --- |
+| CCXT (Python) | Exchange adapter for candles, bid/ask quotes, market metadata, and later private order/balance operations | Initially Kraken's public REST API; additional exchanges through explicit adapters/configuration |
+| FastAPI + Pydantic | Backend HTTP API and typed validation of settings, controls, and responses | Persisted bot state and validated user input |
+| Uvicorn | Run the FastAPI application with one worker | No market data; hosts the API and application lifecycle |
+| Python sqlite3 + SQLite | Transactions, persisted accounting, configuration, and activity history | Bot decisions, execution results, and validated market observations |
+| Python Decimal and logging | Precise monetary arithmetic and structured operational logging | Application calculations and events; no external data feed |
+| Next.js + React + TypeScript | Dashboard, routing, and typed frontend components | FastAPI responses; no direct exchange calls or database access |
+| Tailwind CSS + shadcn/ui | Styling and accessible UI components | Presentation only |
+| TradingView Lightweight Charts | Render candle/equity charts and trade markers | Data supplied by our backend; the chart library does not supply prices or TradingView market feeds |
+| Docker Compose | Build/start frontend and backend, network them, and attach persistent storage | Infrastructure only |
+
+### Crypto information
+
+Kraken is the initial source of truth for the BTC/EUR market; CCXT is the client library, not an independent price provider. Fetch OHLCV through `fetch_ohlcv`, current bid/ask through a supported `fetch_ticker` or `fetch_order_book` endpoint, and symbol/precision/minimum metadata through `load_markets`. Verify the selected endpoint's fields, timestamp semantics, and supported intervals during implementation.
+
+Store exchange identity, market, interval, candle timestamps, observation time, and provider timestamps when available. Reject incomplete candles, invalid/stale quotes, and unsupported/missing metadata rather than silently substituting another exchange's prices. Record local request/receipt times when the provider supplies no timestamp; do not invent a provider timestamp. Validate history coverage because exchange OHLCV endpoints can limit accessible history; pagination does not guarantee unlimited history.
+
+Read-only public market data requires no trading credentials. Future live balances, orders, and fills come from the selected exchange's authenticated API and must be reconciled; paper balances and fills are generated locally and labelled simulated. Public market metadata may not include account-specific fee tiers: configure explicit paper fee assumptions and verify actual fees/market restrictions before live use.
+
+Use REST polling initially with CCXT rate limiting and bounded retries. WebSocket clients, external aggregators, news feeds, paid feeds, pandas, and technical-analysis frameworks are not required initially. Add a dependency only for a concrete need, and update this section when the actual stack changes.
+
 ## Identities and interfaces
 
 - **Market:** exchange + market type + pair. Candle cache keys include market and interval; reuse data across strategies.
@@ -36,7 +62,7 @@ Persist structured operational logs with severity, timestamp, market, strategy i
 
 ## GUI
 
-Use Next.js + TypeScript for the frontend and FastAPI for the backend, with Tailwind CSS, shadcn/ui, and TradingView Lightweight Charts for candles/trade markers. Pin versions when implementation starts.
+Use Next.js + TypeScript for the frontend and FastAPI for the backend, using the packages described above.
 
 Build a responsive dashboard: overview, positions/orders/trades, strategy configuration, and logs. Add market/strategy/mode filters as multiple instances arrive. Show stale data and paper/live mode prominently.
 
