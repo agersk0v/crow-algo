@@ -1,30 +1,28 @@
 # Crow Algo
 
-A small crypto spot-trading bot designed for one market, one strategy, and a €50 total budget.
+A crypto spot-trading bot with configurable budgets, explainable decisions, and a web dashboard.
 
-**Status:** specification only. The bot, dashboard, and deployment are not implemented yet. Nothing in this repository currently places trades.
+**Status:** specification only. Trading, GUI, and hosting are not implemented. No trades are placed.
 
-## First version
+## Direction
 
-- Kraken BTC/EUR, using completed hourly candles.
-- One configurable momentum strategy.
-- Paper trading with public market data, realistic fees, spread, and exchange minimums.
-- A €50 total virtual budget; purchase size and risk limits are configurable.
-- A dashboard for status, balances, positions, decisions, orders, trades, and logs.
-- Continuous operation on a single cloud server with persistent SQLite storage.
+Start with one Kraken BTC/EUR momentum strategy on completed hourly candles in paper mode. Build the core so additional markets, strategy instances, and a live execution adapter can be added without replacing it.
 
-Kraken, BTC/EUR, and momentum are initial defaults. Exact strategy parameters, purchase size, and loss limits must be agreed before implementation. A €50 budget is an allocation limit, not an instruction to spend €50 per trade.
+Budgets, purchase sizes, position limits, and loss thresholds are configuration, not fixed amounts. Strategies have separate allocations; a shared risk manager prevents overspending.
 
-## Project documents
+Recommended GUI: React + TypeScript + Vite with a FastAPI backend, served together from one server. This recommendation is not yet an implemented or final dependency choice.
 
-- [Product](PRODUCT.md): behavior, scope, and delivery order.
-- [Architecture](ARCHITECTURE.md): technical structure and correctness rules.
+## Documentation
+
+- [Product](doc/product.md): behavior and scope.
+- [Architecture](doc/architecture.md): components, extensibility, and GUI recommendation.
+- [Implementation](doc/implementation.md): ordered milestones and acceptance checks.
 - [Agent instructions](AGENTS.md): contribution rules and documentation limits.
 
-These four files are the complete documentation set. Keep them short and update them as the software changes.
+These five files are the complete documentation set. Update them instead of adding more.
 
 ## Development and operation
 
-No installation or run command exists yet. Add verified setup, test, backup, and operating commands here when those features are implemented.
+No installation or run command exists yet. Add verified setup, test, backup, and operating commands here as implementation lands.
 
-The initial release is paper-only. Live trading requires a separately requested exchange adapter and validation; it must never activate merely by supplying credentials.
+Paper mode is the initial release. Future live operation requires an implemented, validated adapter and explicit activation. Credentials alone never enable live trading.

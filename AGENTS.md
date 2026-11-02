@@ -2,22 +2,23 @@
 
 ## Read first
 
-Read [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [README.md](README.md). They define the intended bot. Distinguish planned features from implemented behavior.
+Read [doc/product.md](doc/product.md), [doc/architecture.md](doc/architecture.md), [doc/implementation.md](doc/implementation.md), and [README.md](README.md). They define the intended bot. Distinguish planned features from implemented behavior.
 
 ## Documentation limit
 
-**Do not create any additional documentation files.** The only permitted documentation files are these four files at the repository root:
+**Do not create any additional documentation files.** The only permitted documentation files are these five files:
 
 - `AGENTS.md`
-- `PRODUCT.md`
-- `ARCHITECTURE.md`
+- `doc/product.md`
+- `doc/architecture.md`
+- `doc/implementation.md`
 - `README.md`
 
-Update the appropriate existing file instead. Do not add a docs directory, nested agent instructions, standalone plans, implementation reports, changelogs, guides, or documentation in another format. Do not generate or commit documentation artifacts. This does not prohibit source-code comments/docstrings, tests, configuration, lockfiles, or operational data. Changes to this limit require an explicit user instruction.
+Update the appropriate existing file instead. Do not add documentation beyond this list, including nested agent instructions, standalone plans, implementation reports, changelogs, guides, or documentation in another format. Do not generate or commit documentation artifacts. This does not prohibit source-code comments/docstrings, tests, configuration, lockfiles, or operational data. Changes to this limit require an explicit user instruction.
 
 ## Scope and implementation
 
-- Build the smallest implementation that satisfies the product: one spot pair, one active strategy, one account, hourly candles, and paper execution first.
+- Start with one spot pair and one paper strategy instance on hourly candles, but use explicit market, strategy-instance, allocation-account, and execution-mode identities so future multiple markets, strategies, and live execution fit the same core.
 - Keep Python modules focused. Keep strategy, risk, execution, storage, and presentation separate without adding unnecessary abstraction.
 - Add strategies through the common interface; do not build a general plugin framework.
 - Reuse proven logic selectively from crow-trading. Do not inherit its architecture or expand scope incidentally.
@@ -30,7 +31,7 @@ Update the appropriate existing file instead. Do not add a docs directory, neste
 
 - Paper trading only until the user explicitly requests live implementation/activation. Credentials alone are not authorization.
 - No leverage, margin, shorts, derivatives, deposits, or withdrawals.
-- The initial €50 is the total account budget, not a per-trade amount.
+- Budgets, strategy allocations, purchase sizes, and risk limits are configurable; never hardcode a monetary cap. Keep allocations separate and enforce shared available-funds checks.
 - Enforce fees, precision, minimum orders, budget caps, freshness, and duplicate prevention.
 - Preserve closed-candle evaluation, atomic financial writes, and restart reconciliation.
 - Never log or commit secrets. Never fabricate market data, fills, balances, or performance.
