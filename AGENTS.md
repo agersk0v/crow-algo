@@ -1,72 +1,50 @@
 # Agent instructions
 
-## Read first
+Read [product](doc/product.md), [architecture](doc/architecture.md), [implementation](doc/implementation.md), and [README](README.md) before working. Follow their current scope; distinguish implemented features, plans, and unresolved decisions.
 
-Read [doc/product.md](doc/product.md), [doc/architecture.md](doc/architecture.md), [doc/implementation.md](doc/implementation.md), and [README.md](README.md). They define the intended bot. Distinguish planned features from implemented behavior.
+## Documentation
 
-## Documentation ownership and limits
+Only these five documentation files are permitted. New files require an explicit user instruction; expand existing sections instead.
 
-These are the only five permitted documentation files. Each has a specific purpose:
+| File | Purpose |
+| --- | --- |
+| `README.md` | Introduction, current capabilities, verified setup/run/test/backup/restore commands |
+| `doc/product.md` | User-facing requirements, behavior, controls, scope, exclusions |
+| `doc/architecture.md` | Components, packages/data sources, interfaces, persistence, security, deployment design, technical decisions |
+| `doc/implementation.md` | Milestones, tasks, dependencies, acceptance checks, unresolved-decision owners, progress |
+| `AGENTS.md` | Contribution rules, documentation ownership, testing, collaboration, PR workflow |
 
-| File | Owns | Keep elsewhere |
-| --- | --- | --- |
-| `README.md` | Project introduction, current capabilities, and verified setup/run/test/backup/restore commands | Detailed requirements, architecture, and task lists |
-| `doc/product.md` | User-facing requirements, behavior, controls, scope, and exclusions | Package choices, deployment mechanics, and implementation checklists |
-| `doc/architecture.md` | Components, packages/data sources, interfaces, persistence, security, deployment design, and technical decisions | Milestone progress, detailed test checklists, and operating commands |
-| `doc/implementation.md` | Delivery order, tasks, dependencies, acceptance checks, unresolved-decision owners, and actual progress | Duplicated product specifications or architecture explanations |
-| `AGENTS.md` | Contributor rules, document ownership/maintenance, testing obligations, and PR workflow | Detailed product behavior and technical design |
+- Every PR reviews all five files for impact and updates affected ones. Remove obsolete/duplicated text, fix links, and verify operating commands. If no edits are needed, state that in the PR; avoid cosmetic changes solely to satisfy this rule.
+- Give each topic one authoritative home; summarize briefly and link elsewhere. Keep temporary investigations/discussions in issues/PRs, retaining only useful decisions and rationale in documentation.
+- Resolve open behavior in its implementing PR before merge: behavior belongs in product, technical decisions in architecture, and task ownership/progress in implementation. Unrelated open decisions do not block work.
+- Mark tasks complete only after acceptance checks pass; report verification and limitations in the PR.
+- Do not add nested agent files, standalone plans/reports/guides, or generated documentation. Comments/docstrings, tests, configuration, lockfiles, and operational data are permitted.
 
-Do not create additional documentation files without an explicit user instruction. Expand sections within these files instead. Do not add nested agent instructions, standalone plans, investigation reports, changelogs, guides, or generated documentation in another format. Source-code comments/docstrings, tests, configuration, lockfiles, and operational data are permitted.
-
-## Documentation maintenance
-
-- Every PR must review all five documents for impact and clean up the affected files: update changed behavior/status, remove obsolete or duplicated text, fix links, and keep operating commands verified.
-- Each topic has one authoritative home according to the table. Other documents may give a short overview and link to it; do not repeat detailed rules, package inventories, or procedures.
-- Distinguish implemented behavior, planned work, and unresolved decisions. Do not describe a proposed feature or command as working.
-- Resolve open behavior in the PR implementing it, before merge: document the resulting behavior in product and technical choices in architecture, then test it. Track the owning milestone in implementation. Unrelated open decisions do not block foundation work.
-- Mark implementation tasks complete only when their acceptance checks pass; state validation evidence and any limitations in the PR. Never mark planned work complete merely because code was written.
-- Replace outdated text instead of continually appending history. Keep temporary investigations and lengthy design discussions in the issue/PR; retain only decisions and reasoning needed to maintain the system.
-- Keep documentation concise and expand only for a concrete requirement or implementation change. Add new files only when explicitly instructed by the user.
-- If review finds no documentation changes necessary, say so in the PR description. Do not make cosmetic edits solely to satisfy this rule.
-
-## Scope and implementation
+## Scope, judgment, and decisions
 
 - Do not expand scope merely because an alternative or future feature is mentioned. Distinguish discussion, an agreed requirement, and authorization to implement.
-- Start with one spot pair and one paper strategy instance on hourly candles, but use explicit market, strategy-instance, allocation-account, and execution-mode identities so future multiple markets, strategies, and live execution fit the same core.
-- Keep Python modules focused. Keep strategy, risk, execution, storage, and presentation separate without adding unnecessary abstraction.
-- Add strategies through the common interface; do not build a general plugin framework.
-- Reuse proven logic selectively from crow-trading. Do not inherit its architecture or expand scope incidentally.
-- Preserve unrelated user work. Inspect relevant code and tests before editing.
+- Prefer the simplest design meeting the current milestone while preserving agreed extension points. Avoid premature abstractions, services, dependencies, and generic plugin frameworks. Reuse proven crow-trading logic selectively without inheriting its architecture.
+- Push back on unnecessary complexity, unsound choices, or conflicts with product goals. Explain the concern, offer alternatives, recommend one, and state tradeoffs; respect the user's informed choice within applicable safety constraints.
+- When preparing issues/PRs, identify unresolved architectural decisions. Ask before changing documented architecture, adding major dependencies/services, or committing to significant security, operational, or maintenance consequences. Continue independent work while waiting; routine choices within the agreed architecture need no confirmation.
+- Before creating an issue/PR, check that scope is cohesive and reviewable. Push back on independently deliverable changes bundled together or work spanning several milestones; propose smaller deliverables with acceptance checks/dependencies and a parent issue when useful. Do not split tightly coupled work just to reduce size.
+
+## Implementation and verification
+
+- Inspect relevant code/tests first and preserve unrelated user work. Keep strategy, risk, execution, storage, and presentation separate with focused modules.
 - Use Python 3.12+, typed interfaces, pinned dependencies, and deterministic tests.
-- Run applicable lint, formatting, type, and test checks. Report failures and checks not run.
+- Test meaningful risks: financial arithmetic, budget limits, order lifecycle, duplicate prevention, recovery, security, and integration boundaries. Avoid tests mirroring implementation, trivial framework behavior, or cosmetic changes; prioritize useful coverage over test counts/percentages.
+- Run applicable lint, format, type, and test checks. Report failures and checks not run; do not weaken safeguards to simplify code.
 
-## Focused testing
+## Trading and communication
 
-Write tests that protect meaningful behavior and risks: financial calculations, budget limits, order lifecycle, duplicate prevention, recovery, security, and important integration boundaries. Avoid tests that merely mirror implementation, trivial framework behavior, or cosmetic changes. Prefer a small, effective test suite over maximizing test count or coverage percentages.
-
-## Collaboration and trading explanations
-
-Exercise independent judgment. If a request appears unnecessarily complex, technically unsound, or inconsistent with the product goals, explain the concern plainly. Offer practical alternatives, recommend one, and describe the tradeoffs. Do not agree automatically. Respect the user's informed choice within applicable safety constraints.
-
-Assume no prior trading knowledge. Explain unfamiliar terms in plain language with concrete examples. Distinguish software correctness, simulated performance, and evidence of a trading advantage. Make financial consequences and unresolved assumptions clear before asking for a decision. Never treat a question, illustrative amount, or discussion of live trading as authorization to trade.
-
-## Trading and records
-
-- Paper trading only until the user explicitly requests live implementation/activation. Credentials alone are not authorization.
-- No leverage, margin, shorts, derivatives, deposits, or withdrawals.
-- Budgets, strategy allocations, purchase sizes, and risk limits are configurable; never hardcode a monetary cap. Keep allocations separate and enforce shared available-funds checks.
-- Enforce fees, precision, minimum orders, budget caps, freshness, and duplicate prevention.
-- Preserve closed-candle evaluation, atomic financial writes, and restart reconciliation.
-- Never log or commit secrets. Never fabricate market data, fills, balances, or performance.
-- Never delete financial records or reset an account as incidental cleanup.
-- Do not deploy, activate scheduled services, or send external notifications without user authorization.
-
-## Architectural decisions
-
-When preparing an issue or PR, identify unresolved architectural decisions. If a decision changes the documented architecture, introduces a major dependency or service, or has significant security, operational, or maintenance consequences, ask the user before committing to it. Explain the options, recommend one, and describe the tradeoffs. Continue independent work while awaiting an answer. Routine implementation choices consistent with the agreed architecture do not require confirmation.
+- Assume no prior trading knowledge. Explain unfamiliar terms with plain language and concrete examples; make financial consequences and unresolved assumptions clear before requesting a decision.
+- Distinguish software correctness, simulated performance, and evidence of a trading advantage. Never fabricate market data, fills, balances, or performance.
+- Paper-only until explicitly authorized to implement/activate live trading. Credentials, questions, illustrative amounts, and discussion are not trading permission.
+- Follow product exclusions: no leverage, margin, shorts, derivatives, or automatic deposits/withdrawals.
+- Keep budgets, allocations, sizing, and risk limits configurable; enforce allocation isolation, available funds, fees, precision, minimums, freshness, and duplicate prevention.
+- Preserve closed-candle evaluation, atomic financial writes, and restart reconciliation. Never delete financial records or reset accounts as incidental cleanup.
+- Never commit/log secrets. Deployment, scheduled-service activation, and external notifications require user authorization.
 
 ## Git workflow
 
-Before creating an issue or PR, assess whether its scope is cohesive and reviewable. If it combines independently deliverable changes, spans several milestones, or is too large to validate and review clearly, push back before creating it: explain the concern and propose smaller issues/PRs with clear acceptance checks and dependencies. Use a parent tracking issue when helpful; do not split tightly coupled work merely to reduce size.
-
-The initial documentation bootstrap is authorized directly on main. For subsequent implementation, use a feature branch and a linked issue/pull request. Do not push implementation directly to main. Never merge a pull request or enable auto-merge; the user merges. Do not change repository settings or publish releases without an explicit request.
+Use a feature branch and linked issue/PR for implementation; never push implementation directly to main. Never merge or enable auto-merge; the user merges. Repository settings and releases require an explicit request. The initial documentation bootstrap was explicitly authorized on main.
