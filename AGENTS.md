@@ -50,6 +50,10 @@ Do not create additional documentation files without an explicit user instructio
 - Never delete financial records or reset an account as incidental cleanup.
 - Do not deploy, activate scheduled services, or send external notifications without user authorization.
 
+## Architectural decisions
+
+When preparing an issue or PR, identify unresolved architectural decisions. If a decision changes the documented architecture, introduces a major dependency or service, or has significant security, operational, or maintenance consequences, ask the user before committing to it. Explain the options, recommend one, and describe the tradeoffs. Continue independent work while awaiting an answer. Routine implementation choices consistent with the agreed architecture do not require confirmation.
+
 ## Git workflow
 
 The initial documentation bootstrap is authorized directly on main. For subsequent implementation, use a feature branch and a linked issue/pull request. Do not push implementation directly to main. Never merge a pull request or enable auto-merge; the user merges. Do not change repository settings or publish releases without an explicit request.
