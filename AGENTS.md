@@ -67,4 +67,6 @@ When preparing an issue or PR, identify unresolved architectural decisions. If a
 
 ## Git workflow
 
+Before creating an issue or PR, assess whether its scope is cohesive and reviewable. If it combines independently deliverable changes, spans several milestones, or is too large to validate and review clearly, push back before creating it: explain the concern and propose smaller issues/PRs with clear acceptance checks and dependencies. Use a parent tracking issue when helpful; do not split tightly coupled work merely to reduce size.
+
 The initial documentation bootstrap is authorized directly on main. For subsequent implementation, use a feature branch and a linked issue/pull request. Do not push implementation directly to main. Never merge a pull request or enable auto-merge; the user merges. Do not change repository settings or publish releases without an explicit request.
