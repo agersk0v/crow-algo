@@ -4,17 +4,30 @@
 
 Read [doc/product.md](doc/product.md), [doc/architecture.md](doc/architecture.md), [doc/implementation.md](doc/implementation.md), and [README.md](README.md). They define the intended bot. Distinguish planned features from implemented behavior.
 
-## Documentation limit
+## Documentation ownership and limits
 
-**Do not create any additional documentation files.** The only permitted documentation files are these five files:
+These are the only five permitted documentation files. Each has a specific purpose:
 
-- `AGENTS.md`
-- `doc/product.md`
-- `doc/architecture.md`
-- `doc/implementation.md`
-- `README.md`
+| File | Owns | Keep elsewhere |
+| --- | --- | --- |
+| `README.md` | Project introduction, current capabilities, and verified setup/run/test/backup/restore commands | Detailed requirements, architecture, and task lists |
+| `doc/product.md` | User-facing requirements, behavior, controls, scope, and exclusions | Package choices, deployment mechanics, and implementation checklists |
+| `doc/architecture.md` | Components, packages/data sources, interfaces, persistence, security, deployment design, and technical decisions | Milestone progress, detailed test checklists, and operating commands |
+| `doc/implementation.md` | Delivery order, tasks, dependencies, acceptance checks, unresolved-decision owners, and actual progress | Duplicated product specifications or architecture explanations |
+| `AGENTS.md` | Contributor rules, document ownership/maintenance, testing obligations, and PR workflow | Detailed product behavior and technical design |
 
-Update the appropriate existing file instead. Do not add documentation beyond this list, including nested agent instructions, standalone plans, implementation reports, changelogs, guides, or documentation in another format. Do not generate or commit documentation artifacts. This does not prohibit source-code comments/docstrings, tests, configuration, lockfiles, or operational data. Changes to this limit require an explicit user instruction.
+Do not create additional documentation files without an explicit user instruction. Expand sections within these files instead. Do not add nested agent instructions, standalone plans, investigation reports, changelogs, guides, or generated documentation in another format. Source-code comments/docstrings, tests, configuration, lockfiles, and operational data are permitted.
+
+## Documentation maintenance
+
+- Every PR must review all five documents for impact and clean up the affected files: update changed behavior/status, remove obsolete or duplicated text, fix links, and keep operating commands verified.
+- Each topic has one authoritative home according to the table. Other documents may give a short overview and link to it; do not repeat detailed rules, package inventories, or procedures.
+- Distinguish implemented behavior, planned work, and unresolved decisions. Do not describe a proposed feature or command as working.
+- Resolve open behavior in the PR implementing it, before merge: document the resulting behavior in product and technical choices in architecture, then test it. Track the owning milestone in implementation. Unrelated open decisions do not block foundation work.
+- Mark implementation tasks complete only when their acceptance checks pass; state validation evidence and any limitations in the PR. Never mark planned work complete merely because code was written.
+- Replace outdated text instead of continually appending history. Keep temporary investigations and lengthy design discussions in the issue/PR; retain only decisions and reasoning needed to maintain the system.
+- Keep documentation concise and expand only for a concrete requirement or implementation change. Add new files only when explicitly instructed by the user.
+- If review finds no documentation changes necessary, say so in the PR description. Do not make cosmetic edits solely to satisfy this rule.
 
 ## Scope and implementation
 
@@ -24,7 +37,6 @@ Update the appropriate existing file instead. Do not add documentation beyond th
 - Reuse proven logic selectively from crow-trading. Do not inherit its architecture or expand scope incidentally.
 - Preserve unrelated user work. Inspect relevant code and tests before editing.
 - Use Python 3.12+, typed interfaces, pinned dependencies, and deterministic tests.
-- Every PR must review and clean up the existing documentation: update changed behavior and implementation status, remove obsolete or duplicated text, fix broken links, and keep setup/operation commands accurate and verified. Keep documentation concise and distinguish planned work from implemented features. If no edits are needed after review, say so in the PR description; do not make cosmetic edits just to satisfy this rule. Use only the five permitted documentation files.
 - Test meaningful behavior changes and run applicable lint, formatting, type, and test checks. Report failures and checks not run.
 
 ## Trading and records

@@ -4,36 +4,19 @@ A crypto spot-trading bot with configurable budgets, explainable decisions, and 
 
 **Status:** specification only. Trading, GUI, and hosting are not implemented. No trades are placed.
 
-## Direction
+The first release targets one Kraken BTC/EUR momentum strategy on hourly candles in paper mode. The design supports later additional markets, separate strategy allocations, and live execution. See [product](doc/product.md) for behavior and scope.
 
-Start with one Kraken BTC/EUR momentum strategy on completed hourly candles in paper mode. Build the core so additional markets, strategy instances, and a live execution adapter can be added without replacing it.
-
-Budgets, purchase sizes, position limits, and loss thresholds are configuration, not fixed amounts. Strategies have separate allocations; a shared risk manager prevents overspending.
-
-Frontend: Next.js + TypeScript, Tailwind CSS, shadcn/ui, and TradingView Lightweight Charts. Backend: FastAPI and the Python trading engine, with PostgreSQL for persistence. Docker Compose starts frontend, backend, and database on one server.
+The planned stack is Next.js, Python/FastAPI, and PostgreSQL, started with Docker Compose. See [architecture](doc/architecture.md) for packages, data sources, and service design.
 
 ## Documentation
 
-- [Product](doc/product.md): behavior and scope.
-- [Architecture](doc/architecture.md): components, extensibility, and GUI design.
-- [Implementation](doc/implementation.md): ordered milestones and acceptance checks.
-- [Agent instructions](AGENTS.md): contribution rules and documentation limits.
-
-These five files are the complete documentation set. Update them instead of adding more.
+- [Product](doc/product.md): requirements, behavior, scope, and exclusions.
+- [Architecture](doc/architecture.md): technical structure and decisions.
+- [Implementation](doc/implementation.md): milestones, open decisions, acceptance checks, and progress.
+- [Agent instructions](AGENTS.md): contribution and documentation maintenance rules.
 
 ## Development and operation
 
-Docker Compose is the chosen startup workflow. Once the services and Compose configuration are implemented, the intended commands are:
+No runnable services or Compose configuration exist yet. Setup, run, test, backup, and restore commands will be added here as they are implemented and verified. Planned delivery is tracked in [implementation](doc/implementation.md).
 
-```sh
-docker compose up -d --build
-docker compose ps
-docker compose logs -f --tail=100
-docker compose down
-```
-
-These commands are planned, not runnable in this specification-only repository yet. PostgreSQL data will live in a database-owned named volume and survive container recreation and normal shutdown. Never use `docker compose down -v` on an active installation: it deletes named volumes.
-
-Add verified setup, configuration, test, backup, and restore instructions here as implementation lands. Docker log following complements the dashboard's durable, searchable activity history.
-
-Paper mode is the initial release. Future live operation requires an implemented, validated adapter and explicit activation. Credentials alone never enable live trading.
+Paper mode is the initial release; live trading requires separate implementation, validation, and explicit activation.

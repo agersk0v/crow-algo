@@ -1,5 +1,7 @@
 # Product
 
+Defines intended user-facing behavior and scope. All features are planned; delivery status and unresolved-decision ownership live in [implementation](implementation.md).
+
 ## Goal
 
 Run a crypto bot continuously with configurable capital, understandable decisions, and a dashboard showing what it is doing. Start small while supporting future multiple markets, strategies, and live trading. No profitability is promised.
@@ -39,7 +41,7 @@ Configure budgets, strategy parameters, and enabled markets through validated fo
 
 ## Reliability and live operation
 
-Start the Next.js dashboard, Python backend, and PostgreSQL database with Docker Compose on one cloud server. Use automatic restart, persistent storage, authenticated dashboard access, backups, and a verified restore. Closing/restarting the frontend must not stop trading. Refuse new entries for stale data, insufficient funds, or failed reconciliation.
+The application must run continuously on one cloud server with automatic restart, persistent storage, authenticated dashboard access, backups, and a verified restore. Technical hosting design is defined in [architecture](architecture.md#docker-compose-and-hosting). Closing/restarting the frontend must not stop trading. Refuse new entries for stale data, insufficient funds, or failed reconciliation.
 
 Future live execution requires explicit activation, credentials without withdrawal permissions, partial-fill accounting, cancellation handling, and reconciliation of uncertain submissions before retry. Manual/external exchange activity must be detected and handled, not assigned to a strategy arbitrarily.
 
@@ -47,6 +49,6 @@ Future live execution requires explicit activation, credentials without withdraw
 
 Stocks, derivatives, margin, shorts, automatic deposits/withdrawals, visual strategy builders, distributed services, and a full research platform.
 
-## Decisions still needed
+## Requirements awaiting definition
 
-Agree initial lookbacks, funding/allocation, purchase size, position/exposure caps, loss threshold and action, fee/slippage assumptions, and hosting before implementing the affected behavior. See [implementation](implementation.md).
+Detailed strategy rules, loss-halt policy, outage recovery, accounting terminology, authentication, and paper order lifecycle will be defined in their implementing PRs. [Implementation](implementation.md#open-decisions-and-owning-milestones) assigns each decision to a milestone; this file will own the resulting user-visible behavior.

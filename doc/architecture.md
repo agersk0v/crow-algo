@@ -1,5 +1,7 @@
 # Architecture
 
+Defines the planned technical structure, dependencies, and technical decisions. Delivery tasks and validation checks live in [implementation](implementation.md).
+
 ## Shape
 
 One Python trading application, one PostgreSQL database, and a web dashboard on one server. Keep strategy, market data, risk, execution, persistence, and presentation separate. Avoid distributed services and a general plugin framework.
@@ -22,7 +24,7 @@ These are planned dependencies, not packages already installed in this specifica
 | Next.js + React + TypeScript | Dashboard, routing, and typed frontend components | FastAPI responses; no direct exchange calls or database access |
 | Tailwind CSS + shadcn/ui | Styling and accessible UI components | Presentation only |
 | TradingView Lightweight Charts | Render candle/equity charts and trade markers | Data supplied by our backend; the chart library does not supply prices or TradingView market feeds |
-| Docker Compose | Build/start frontend and backend, network them, and attach persistent storage | Infrastructure only |
+| Docker Compose | Start frontend, backend, and PostgreSQL, network them, and attach persistent storage | Infrastructure only |
 
 ### Crypto information
 
@@ -66,7 +68,7 @@ Persist structured operational logs with severity, timestamp, market, strategy i
 
 Use Next.js + TypeScript for the frontend and FastAPI for the backend, using the packages described above.
 
-Build a responsive dashboard: overview, positions/orders/trades, strategy configuration, and logs. Add market/strategy/mode filters as multiple instances arrive. Show stale data and paper/live mode prominently.
+Build a responsive dashboard following the [product requirements](product.md#dashboard-and-controls); extend views and filters as capabilities arrive.
 
 Run Next.js and the Python backend as separate Compose services. Route browser API calls through a same-origin /api path to FastAPI; keep backend addresses internal to the Compose network. Use short polling initially; add server-sent events for logs/status only if needed. Next.js must not execute trading logic or own financial storage. Keep trading independent of browser sessions, UI requests, and frontend restarts.
 
@@ -89,4 +91,4 @@ Expose the dashboard only on localhost by default. Public hosting adds HTTPS and
 
 Pin container/runtime versions and add Compose/Docker build files when runnable services exist. Use PostgreSQL as the single database; do not add Kubernetes or queue services. Do not rely on a development chat session for continuous hosting.
 
-Use PostgreSQL integration tests for migrations, constraints, transactions, locking, and restart recovery. Test closed-candle timing, fee/rounding calculations, reservations, isolation, risk rejections, stale data, pause behavior, rollback, and restart deduplication. Future live and multi-instance milestones need dedicated recovery/isolation tests. Reuse small proven functions/tests from crow-trading without copying its daily scanner architecture.
+Validation and acceptance checks are tracked in [implementation](implementation.md#verification).
