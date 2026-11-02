@@ -1,6 +1,6 @@
 # Product
 
-Defines intended user-facing behavior and scope. All features are planned; delivery status and unresolved-decision ownership live in [implementation](implementation.md).
+Defines intended user-facing trading behavior and scope. Configuration validation exists; operational trading features remain planned. Delivery status and unresolved-decision ownership live in [implementation](implementation.md).
 
 ## Goal
 
