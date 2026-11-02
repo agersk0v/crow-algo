@@ -6,6 +6,7 @@ Status: planning only. All milestones below are incomplete. Implement in small l
 
 - [ ] Agree the initial strategy parameters, configurable funding/allocation, sizing, loss policy, and fee assumptions.
 - [ ] Set up Python 3.12+, pinned dependencies, lint/type/test checks, and SQLite migrations.
+- [ ] Keep application entry points compatible with container startup; add Dockerfiles and compose.yaml once runnable services exist.
 - [ ] Define market, strategy-instance, execution-account/mode, configuration-version, order, and fill identities.
 - [ ] Define small strategy and execution interfaces without hardcoded pair, interval, or budget.
 
@@ -31,20 +32,24 @@ Acceptance: public-data paper operation resumes after interruption and rejects s
 
 ## 4. GUI
 
-- [ ] Agree frontend stack; recommended React + TypeScript + Vite, FastAPI, Tailwind/shadcn, and Lightweight Charts.
+- [ ] Build the Next.js + TypeScript frontend with Tailwind/shadcn and Lightweight Charts, backed by FastAPI.
 - [ ] Build authenticated overview, equity/candle charts, position/order/trade tables, decisions, and searchable logs.
 - [ ] Add validated settings and acknowledged pause/resume controls, recording configuration versions.
 - [ ] Show mode, freshness, reservations, health, fees, and realized/unrealized results.
 
 Acceptance: displayed amounts match the ledger; errors and rejected commands are visible; UI refresh/retry cannot duplicate trading actions. Use backend filtering/pagination for growing history.
 
-## 5. Continuous hosting
+## 5. Docker Compose and continuous hosting
 
-- [ ] Choose one server, persistent storage, HTTPS/authentication, secrets management, and process supervision.
+- [ ] Package Next.js and the Python backend as separate production Compose services with pinned builds and an internal API connection.
+- [ ] Run one backend process/API worker and one trading-loop owner; keep trading independent of frontend restarts.
+- [ ] Add backend-only persistent storage, health checks, graceful shutdown, restart policies, and bounded container logs.
+- [ ] Verify `docker compose config`, image builds, startup, health, API routing, and stop/start without lost records or duplicate trades.
+- [ ] Choose one server; configure HTTPS/authentication, secrets injection, and off-volume backup storage.
 - [ ] Add automatic SQLite-consistent backups and a documented restore command in README.md.
 - [ ] Verify restart, disk persistence, restore, and log rotation independently of trade retention.
 
-Acceptance: a restarted/restored instance reconciles and resumes without resetting capital or replaying trades. Deploy only when authorized.
+Acceptance: docker compose up -d --build starts the application; frontend restart leaves trading running, and backend restart/normal down/up preserves state and reconciles without resetting capital or replaying trades. Verify backup restore separately. Do not use volume deletion as cleanup. Deploy only when authorized.
 
 ## 6. Multiple markets and strategies
 

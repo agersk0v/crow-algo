@@ -10,12 +10,12 @@ Start with one Kraken BTC/EUR momentum strategy on completed hourly candles in p
 
 Budgets, purchase sizes, position limits, and loss thresholds are configuration, not fixed amounts. Strategies have separate allocations; a shared risk manager prevents overspending.
 
-Recommended GUI: React + TypeScript + Vite with a FastAPI backend, served together from one server. This recommendation is not yet an implemented or final dependency choice.
+Frontend: Next.js + TypeScript, Tailwind CSS, shadcn/ui, and TradingView Lightweight Charts. Backend: FastAPI and the Python trading engine. Docker Compose starts both services on one server.
 
 ## Documentation
 
 - [Product](doc/product.md): behavior and scope.
-- [Architecture](doc/architecture.md): components, extensibility, and GUI recommendation.
+- [Architecture](doc/architecture.md): components, extensibility, and GUI design.
 - [Implementation](doc/implementation.md): ordered milestones and acceptance checks.
 - [Agent instructions](AGENTS.md): contribution rules and documentation limits.
 
@@ -23,6 +23,17 @@ These five files are the complete documentation set. Update them instead of addi
 
 ## Development and operation
 
-No installation or run command exists yet. Add verified setup, test, backup, and operating commands here as implementation lands.
+Docker Compose is the chosen startup workflow. Once the services and Compose configuration are implemented, the intended commands are:
+
+```sh
+docker compose up -d --build
+docker compose ps
+docker compose logs -f --tail=100
+docker compose down
+```
+
+These commands are planned, not runnable in this specification-only repository yet. Backend data will live in a named volume and survive container recreation and normal shutdown. Never use `docker compose down -v` on an active installation: it deletes named volumes.
+
+Add verified setup, configuration, test, backup, and restore instructions here as implementation lands. Docker log following complements the dashboard's durable, searchable activity history.
 
 Paper mode is the initial release. Future live operation requires an implemented, validated adapter and explicit activation. Credentials alone never enable live trading.

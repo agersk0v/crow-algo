@@ -39,7 +39,7 @@ Configure budgets, strategy parameters, and enabled markets through validated fo
 
 ## Reliability and live operation
 
-Run on one cloud server with automatic restart, persistent storage, authenticated dashboard access, backups, and a verified restore. Refuse new entries for stale data, insufficient funds, or failed reconciliation.
+Start the Next.js dashboard and Python backend with Docker Compose on one cloud server. Use automatic restart, persistent storage, authenticated dashboard access, backups, and a verified restore. Closing/restarting the frontend must not stop trading. Refuse new entries for stale data, insufficient funds, or failed reconciliation.
 
 Future live execution requires explicit activation, credentials without withdrawal permissions, partial-fill accounting, cancellation handling, and reconciliation of uncertain submissions before retry. Manual/external exchange activity must be detected and handled, not assigned to a strategy arbitrarily.
 
@@ -49,4 +49,4 @@ Stocks, derivatives, margin, shorts, automatic deposits/withdrawals, visual stra
 
 ## Decisions still needed
 
-Agree initial lookbacks, funding/allocation, purchase size, position/exposure caps, loss threshold and action, fee/slippage assumptions, GUI stack, and hosting before implementing the affected behavior. See [implementation](implementation.md).
+Agree initial lookbacks, funding/allocation, purchase size, position/exposure caps, loss threshold and action, fee/slippage assumptions, and hosting before implementing the affected behavior. See [implementation](implementation.md).
