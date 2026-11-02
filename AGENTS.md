@@ -38,7 +38,17 @@ Do not create additional documentation files without an explicit user instructio
 - Reuse proven logic selectively from crow-trading. Do not inherit its architecture or expand scope incidentally.
 - Preserve unrelated user work. Inspect relevant code and tests before editing.
 - Use Python 3.12+, typed interfaces, pinned dependencies, and deterministic tests.
-- Test meaningful behavior changes and run applicable lint, formatting, type, and test checks. Report failures and checks not run.
+- Run applicable lint, formatting, type, and test checks. Report failures and checks not run.
+
+## Focused testing
+
+Write tests that protect meaningful behavior and risks: financial calculations, budget limits, order lifecycle, duplicate prevention, recovery, security, and important integration boundaries. Avoid tests that merely mirror implementation, trivial framework behavior, or cosmetic changes. Prefer a small, effective test suite over maximizing test count or coverage percentages.
+
+## Collaboration and trading explanations
+
+Exercise independent judgment. If a request appears unnecessarily complex, technically unsound, or inconsistent with the product goals, explain the concern plainly. Offer practical alternatives, recommend one, and describe the tradeoffs. Do not agree automatically. Respect the user's informed choice within applicable safety constraints.
+
+Assume no prior trading knowledge. Explain unfamiliar terms in plain language with concrete examples. Distinguish software correctness, simulated performance, and evidence of a trading advantage. Make financial consequences and unresolved assumptions clear before asking for a decision. Never treat a question, illustrative amount, or discussion of live trading as authorization to trade.
 
 ## Trading and records
 
