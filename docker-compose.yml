@@ -1,0 +1,53 @@
+name: crow-algo
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:17.7-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crow_algo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${CROW_DB_PASSWORD:?Set CROW_DB_PASSWORD in .env}
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./backend/migrations/bootstrap.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U crow_algo -d crow_algo"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    logging: *logging
+
+  backend:
+    image: crow-algo-backend:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    init: true
+    restart: unless-stopped
+    environment:
+      CROW_DATABASE_URL: postgresql+psycopg://crow_algo@db:5432/crow_algo
+      PGPASSWORD: ${CROW_DB_PASSWORD:?Set CROW_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${CROW_API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.build_opener(urllib.request.ProxyHandler({})).open('http://127.0.0.1:8000/health/ready', timeout=2).close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    stop_grace_period: 15s
+    logging: *logging
+
+volumes:
+  database:

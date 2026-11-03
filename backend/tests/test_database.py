@@ -2,7 +2,7 @@
 
 import pytest
 
-from crow_algo.database import PersistenceError, database_url
+from crow_algo.storage.database import PersistenceError, database_url
 
 
 @pytest.mark.parametrize(
@@ -14,13 +14,7 @@ def test_invalid_database_urls_have_safe_errors(value: str) -> None:
     assert value not in str(result.value)
 
 
-def test_runtime_and_migration_settings_are_separate(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv(
-        "CROW_DATABASE_URL", "postgresql+psycopg://runtime@localhost/crow"
-    )
-    monkeypatch.delenv("CROW_MIGRATION_DATABASE_URL", raising=False)
-    assert database_url().username == "runtime"
+def test_missing_database_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CROW_DATABASE_URL", raising=False)
     with pytest.raises(PersistenceError, match="not configured"):
-        database_url(migration=True)
+        database_url()

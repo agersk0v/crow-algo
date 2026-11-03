@@ -8,11 +8,33 @@ One Python trading application, one PostgreSQL database, and a web dashboard on 
 
 Flow: market data → strategy signal → allocation/risk checks → order intent → execution/reconciliation → persisted state → dashboard.
 
-Typed contracts, validation, PostgreSQL configuration persistence/migrations, and ownership locking are implemented. Runtime services and trading remain planned; see [implementation](implementation.md) for delivery status.
+## Repository layout
+
+Follow the repository-level organization of crow-fitness, using Python package conventions inside the backend:
+
+```text
+backend/
+  Dockerfile
+  pyproject.toml, uv.lock, alembic.ini
+  src/crow_algo/
+    api/          # HTTP application
+    storage/      # Database, persistence, migrations, ownership primitive
+    config.py, domain.py, interfaces.py
+  migrations/     # Alembic revisions and bootstrap SQL
+  tests/
+scripts/smoke.sh   # Explicit, disposable Compose recovery check
+docs/             # Product, architecture, implementation
+docker-compose.yml
+AGENTS.md, README.md
+```
+
+Add `frontend/` for Next.js when implemented. Add runner, strategy, execution, and risk modules when those milestones need them; do not create empty feature scaffolding. Go-specific `cmd/` and `internal/` conventions are not required for this Python backend.
+
+Typed contracts, validation, PostgreSQL configuration persistence/migrations, ownership primitive, and health-only API/Compose startup are implemented. Trading and frontend remain planned; see [implementation](implementation.md) for delivery status.
 
 ## Major packages and data sources
 
-Pydantic, SQLAlchemy 2, Psycopg 3, and Alembic are current dependencies; pytest, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. FastAPI and the other service/market-data dependencies below remain planned.
+Pydantic, SQLAlchemy 2, Psycopg 3, Alembic, FastAPI, and Uvicorn are current dependencies; pytest/httpx, Ruff, and mypy support development. Versions and transitive dependencies are pinned in backend/pyproject.toml and backend/uv.lock. Market-data and frontend dependencies remain planned.
 
 | Package or component | Responsibility | Source of data |
 | --- | --- | --- |
@@ -46,7 +68,7 @@ Use REST polling initially with CCXT rate limiting and bounded retries. WebSocke
 
 ### Configuration and contracts
 
-`src/crow_algo/domain.py` defines validated value/message types; `config.py` defines configuration and eligibility validation; `interfaces.py` declares strategy/execution protocols without implementations.
+`backend/src/crow_algo/domain.py` defines validated value/message types; `backend/src/crow_algo/config.py` defines configuration and eligibility validation; `backend/src/crow_algo/interfaces.py` declares strategy/execution protocols without implementations.
 
 A configuration has schema/version numbers and collections of markets, execution accounts, allocation accounts, and strategy instances. Execution accounts specify exchange, paper/live mode, common quote currency, and configured budget. Each strategy references its own allocation account, which references an execution account. These records describe limits and ownership, not actual funding or balances.
 
@@ -72,11 +94,11 @@ The current schema contains only `configuration_versions`: a positive BIGINT ver
 
 For future financial tables, use Decimal in Python and PostgreSQL NUMERIC columns with precision/scale chosen for supported assets; reject overflow and unintended rounding. Use UTC application timestamps. Store the signal inputs and quote evidence needed to explain each trade without a separate research snapshot system. Separate paper and live accounting; simulated capital never counts as exchange funds.
 
-Use unique constraints for idempotency and row locks when reserving shared funds. Enforce trading-loop ownership with a PostgreSQL session advisory lock on a dedicated connection; stop trading if that connection is lost. Run Alembic once before backend readiness, not concurrently in API workers. Use bounded connection pools, transaction timeouts, and separate runtime and migration database roles.
+Use unique constraints for idempotency and row locks when reserving shared funds. Enforce trading-loop ownership with a PostgreSQL session advisory lock on a dedicated connection; stop trading if that connection is lost. Run Alembic once before backend readiness, not concurrently in API workers. Use bounded connection pools and transaction timeouts. The local setup uses one schema-owner application login; separate runtime/migration accounts are deferred until hosting/live requirements justify them.
 
 `OwnerLock` currently provides the ownership primitive only; no loop runs. It holds one database-wide advisory lock on an unpooled, autocommit session and physically closes that session on exit. `check()` verifies the session still holds the lock; a lost or released session permanently invalidates that handle instead of reconnecting/reacquiring. Future callers must check before protected work and stop on failure. This is not an exchange-side fence against already in-flight network requests.
 
-Connection setup bounds pool waits, connection/statement/lock/idle-transaction times and configures TCP failure detection. Persistence/ownership errors suppress SQL payloads and connection details; callers must not log connection URLs. Migrations use an explicitly supplied connection or `CROW_MIGRATION_DATABASE_URL`; runtime uses `CROW_DATABASE_URL`. The migration role owns schema objects, while the runtime role has SELECT/INSERT on snapshots only. Provisioning/grant commands belong in [README](../README.md#database-setup-and-migrations). SQLAlchemy does not create schema automatically; Alembic changes it transactionally, and destructive downgrade is unsupported.
+Connection setup bounds pool waits, connection/statement/lock/idle-transaction times and configures TCP failure detection. Persistence/ownership errors suppress SQL payloads and connection details; callers must not log credentials. All application and migration commands use `CROW_DATABASE_URL`, with libpq authentication supplied separately. SQLAlchemy never creates schema automatically; Alembic changes it transactionally and destructive downgrade is unsupported. The application account owns the schema, so database privileges do not prevent direct SQL rewrites; application persistence still appends versions without an overwrite operation. Setup/operating commands belong in [README](../README.md#database-setup-and-migrations).
 
 Commit financial changes atomically. Reconcile cash, reservations, fills, and owned quantities on restart. Live adapters additionally reconcile exchange orders and balances, including partial fills and external/manual activity. Preserve records; do not reset accounts to recover.
 
@@ -104,6 +126,10 @@ Docker Compose is the standard startup workflow on one server:
 - `restart: unless-stopped` and graceful shutdown, with reconciliation before resumed order processing. Restart policies recover exited containers; an unhealthy check alone does not restart a process.
 - Structured stdout/stderr logs with bounded Docker log rotation, plus durable searchable operational history for the dashboard.
 - Ignored local configuration and runtime secret injection; never bake credentials into images, commit them, or expose them through browser-visible Next.js variables.
+
+Currently Compose contains only `db` and `backend`; add `frontend` when runnable. The image command applies migrations with the same application login, then execs the single-worker HTTP server only on success. A transaction-scoped migration lock prevents concurrent upgrades. A failed migration blocks startup without resetting records. No trading loop or trading ownership starts. Liveness is asynchronous and database-independent; synchronous readiness probes run in FastAPI's thread pool, checking migration heads and configuration-table access. Failure returns a generic 503. The API itself never changes schema; shutdown disposes its pool.
+
+The pinned image runs as a non-root OS user. Its allowlisted build context excludes `.env`; optional BuildKit `proxy_ca` mounts support trusted-proxy builds without copying certificates into images. Compose injects one password from `.env`: PostgreSQL uses it for the application login and the backend uses libpq's `PGPASSWORD`, avoiding URL encoding problems. Minimal initialization creates one ordinary schema-owner login and disables the built-in bootstrap administrator login; that built-in role must retain its superuser attribute internally. There is no credential generator, multi-role provisioning, or separate migration service. Docker/environment administrators can inspect runtime credentials; production secret handling, administrative access, and stronger role isolation must be reconsidered before public/live operation.
 
 Expose the dashboard only on localhost by default. Public hosting adds HTTPS and authentication before exposing it. Use scheduled PostgreSQL-consistent logical backups (pg_dump in custom format) to separate storage and verify pg_restore into an isolated database. Do not copy a running database volume as a backup or treat a volume as backup protection. Back up required configuration separately. Normal Compose shutdown/rebuild must preserve data; deleting volumes is never routine cleanup.
 

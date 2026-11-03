@@ -47,10 +47,9 @@ class PersistenceError(RuntimeError):
     """Safe diagnostic without credentials, SQL parameters, or stored payloads."""
 
 
-def database_url(value: str | URL | None = None, *, migration: bool = False) -> URL:
+def database_url(value: str | URL | None = None) -> URL:
     if value is None:
-        variable = "CROW_MIGRATION_DATABASE_URL" if migration else "CROW_DATABASE_URL"
-        value = os.environ.get(variable)
+        value = os.environ.get("CROW_DATABASE_URL")
     if not value:
         raise PersistenceError("database connection is not configured")
     try:

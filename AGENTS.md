@@ -1,6 +1,6 @@
 # Agent instructions
 
-Read [product](doc/product.md), [architecture](doc/architecture.md), [implementation](doc/implementation.md), and [README](README.md) before working. Follow their current scope; distinguish implemented features, plans, and unresolved decisions.
+Read [product](docs/product.md), [architecture](docs/architecture.md), [implementation](docs/implementation.md), and [README](README.md) before working. Follow their current scope; distinguish implemented features, plans, and unresolved decisions.
 
 ## Documentation
 
@@ -9,9 +9,9 @@ Only these five documentation files are permitted. New files require an explicit
 | File | Purpose |
 | --- | --- |
 | `README.md` | Introduction, current capabilities, verified setup/run/test/backup/restore commands |
-| `doc/product.md` | User-facing requirements, behavior, controls, scope, exclusions |
-| `doc/architecture.md` | Components, packages/data sources, interfaces, persistence, security, deployment design, technical decisions |
-| `doc/implementation.md` | Milestones, tasks, dependencies, acceptance checks, unresolved-decision owners, progress |
+| `docs/product.md` | User-facing requirements, behavior, controls, scope, exclusions |
+| `docs/architecture.md` | Components, packages/data sources, interfaces, persistence, security, deployment design, technical decisions |
+| `docs/implementation.md` | Milestones, tasks, dependencies, acceptance checks, unresolved-decision owners, progress |
 | `AGENTS.md` | Contribution rules, documentation ownership, testing, collaboration, PR workflow |
 
 - Every PR reviews all five files for impact and updates affected ones. Remove obsolete/duplicated text, fix links, and verify operating commands. If no edits are needed, state that in the PR; avoid cosmetic changes solely to satisfy this rule.
@@ -31,6 +31,7 @@ Only these five documentation files are permitted. New files require an explicit
 ## Implementation and verification
 
 - Inspect relevant code/tests first and preserve unrelated user work. Keep strategy, risk, execution, storage, and presentation separate with focused modules.
+- Follow the crow-fitness-style layout: backend code/tooling in `backend/`, future UI in `frontend/`, documentation in `docs/`, and operational smoke checks in `scripts/`. Group Python modules by responsibility; add directories only when they contain implemented code.
 - Use Python 3.12+, typed interfaces, pinned dependencies, and deterministic tests.
 - Test meaningful risks: financial arithmetic, budget limits, order lifecycle, duplicate prevention, recovery, security, and integration boundaries. Avoid tests mirroring implementation, trivial framework behavior, or cosmetic changes; prioritize useful coverage over test counts/percentages.
 - Run applicable lint, format, type, and test checks. Report failures and checks not run; do not weaken safeguards to simplify code.
