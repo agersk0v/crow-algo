@@ -14,6 +14,18 @@ Run a crypto bot continuously with configurable capital, understandable decision
 - Long-only, initially at most one position per strategy/market and no additional buys while an entry or position exists.
 - Initial market, strategy, parameters, and timeframe are configuration rather than hardcoded assumptions.
 
+## Momentum v1 rules
+
+The offline strategy compares completed closing prices: `(latest close / close N candles earlier - 1) × 100`. Configurable parameters are `lookback` (positive integer, default 24 candles), `entry_threshold_pct` (default +2), and `exit_threshold_pct` (default −1). Thresholds accept finite decimal strings or integers, not binary floats or booleans; exit must be strictly below entry. Unknown parameters are errors.
+
+Return `enter_long` strictly above the entry threshold, `exit_long` strictly below the exit threshold, and `hold` between them, including equality. For an earlier close of €100, latest closes of €103, €101, and €98 produce entry, hold, and exit respectively; €102 and €99 are exact boundaries and hold. These are continuing conditions, not crossing-only events. Every decision explains the price comparison or lack of history.
+
+N intervals require N + 1 completed candles: the default needs 25 hourly candles spanning 24 hours between closing prices. Insufficient valid history returns hold with a reason. Only candles closed at or before the supplied evaluation time count. Reject duplicate, out-of-order, or overlapping completed history; within the latest required window (or all available candles when short), also reject gaps and inconsistent candle durations. Do not repair or invent history. Older gaps outside that window do not affect the calculation.
+
+A signal does not place an order. Future runner/risk checks must prevent repeated buys while an entry or position exists and sales of another strategy's holdings. Hold keeps the current state, whether cash or crypto. Candle freshness, scheduling, and missed-signal recovery remain responsibilities of the future runner.
+
+These defaults are starting assumptions, not optimized settings or evidence of profitability. Fees and sideways markets can cause losses. The exit threshold measures momentum from a historical close, not loss from a purchase price; it is not a stop-loss guarantee. Loss limits are separate risk controls.
+
 ## Extension requirements
 
 - A market is an exchange, market type, and trading pair. Start with spot markets.
@@ -51,4 +63,4 @@ Stocks, derivatives, margin, shorts, automatic deposits/withdrawals, visual stra
 
 ## Requirements awaiting definition
 
-Detailed strategy rules, loss-halt policy, outage recovery, accounting terminology, authentication, and paper order lifecycle will be defined in their implementing PRs. [Implementation](implementation.md#open-decisions-and-owning-milestones) assigns each decision to a milestone; this file will own the resulting user-visible behavior.
+Loss-halt policy, outage recovery, accounting terminology, authentication, and paper order lifecycle will be defined in their implementing PRs. [Implementation](implementation.md#open-decisions-and-owning-milestones) assigns each decision to a milestone; this file will own the resulting user-visible behavior.

@@ -1,6 +1,6 @@
 # Implementation
 
-Status: local foundation implemented through configuration/contracts, PostgreSQL persistence/migrations, ownership primitive, and health-only API/Compose. Trading, GUI, and production operation remain planned. Implement in small linked issues/PRs, updating this file with actual progress and verification.
+Status: local foundation implemented through configuration/contracts, PostgreSQL persistence/migrations, ownership primitive, health-only API/Compose, and offline momentum evaluation. Paper execution, GUI, and production operation remain planned. Implement in small linked issues/PRs, updating this file with actual progress and verification.
 
 ## Open decisions and owning milestones
 
@@ -8,7 +8,6 @@ Resolve each item in the implementing PR before merge, with explicit behavior, d
 
 | Decision | Owning milestone |
 | --- | --- |
-| Momentum entry/exit formulas, lookbacks, and insufficient-history behavior | 2: offline paper core |
 | Funding/allocation, purchase size, exposure limits, accounting terms, and treatment of funding in performance | 2: offline paper core |
 | Loss-threshold calculation, action on breach, and clearing a halt | 2: offline paper core |
 | Missing-quote behavior, paper order expiry/cancellation, fee/slippage assumptions | 2: offline paper core; validate provider assumptions in 3 |
@@ -36,8 +35,9 @@ Issue #2 adds contracts/eligibility validation; #3 adds append-only configuratio
 
 Depends on milestone 1.
 
-- [ ] Resolve the strategy, accounting, loss-limit, and paper-order decisions assigned above.
-- [ ] Implement one momentum strategy, sizing/risk checks, reservations, and paper execution.
+- [x] Implement offline momentum v1 with agreed configurable rules, closed-candle validation, explainable signals, and deterministic synthetic tests ([#8](https://github.com/agersk0v/crow-algo/issues/8)); rules live in [product](product.md#momentum-v1-rules).
+- [ ] Resolve the accounting, loss-limit, and paper-order decisions assigned above.
+- [ ] Implement sizing/risk checks, reservations, and paper execution.
 - [ ] Persist decisions/reasons, orders/fills, balances, configuration history, quote evidence, and equity samples.
 - [ ] Keep budget/allocation changes explicit; distinguish limits from actual capital/funding.
 - [ ] Implement pause, risk halt, transaction rollback, and restart reconciliation.

@@ -2,7 +2,7 @@
 
 A crypto spot-trading bot with configurable budgets, explainable decisions, and a web dashboard.
 
-**Status:** configuration/contracts, PostgreSQL persistence, migrations, ownership primitive, and a local health-only FastAPI backend are implemented. Docker Compose starts the backend/database. Trading, GUI, authentication, and production hosting remain planned. No trades are placed.
+**Status:** configuration/contracts, PostgreSQL persistence, migrations, ownership primitive, a local health-only FastAPI backend, and offline momentum signal evaluation are implemented. Docker Compose starts the backend/database. Paper execution, GUI, authentication, and production hosting remain planned. No trades are placed.
 
 The first release targets one Kraken BTC/EUR momentum strategy on hourly candles in paper mode. The design supports later additional markets, separate strategy allocations, and live execution. See [product](docs/product.md) for behavior and scope.
 
@@ -94,6 +94,16 @@ Migrations are transactional and serialized, preserve existing records, and refu
 `database_engine()` reads the runtime URL. Within `engine.begin()`, `save_configuration(connection, config)` appends a validated version and `load_configuration(connection, version)` reads it. Reusing a version is an error; the caller must roll back failed transactions. See [storage design](docs/architecture.md#storage-and-recovery) for scope and ownership semantics.
 
 `crow_algo.config.Configuration.model_validate_json(text)` validates a JSON configuration; `model_dump_json()` serializes amounts as exact decimal strings. `validate_activation(config, [strategy_id])` separately checks initial-release eligibility. It never starts a process, funds an account, or places an order. See [architecture](docs/architecture.md#configuration-and-contracts) for the configuration structure and current restrictions.
+
+### Evaluate the offline strategy
+
+`crow_algo.strategies.momentum.MomentumStrategy().evaluate(market, candles, parameters, as_of=timestamp)` accepts a `Market`, a tuple of validated `Candle` records, a parameter dictionary, and an explicit timezone-aware evaluation time. For example, `parameters={"lookback": 24, "entry_threshold_pct": "2", "exit_threshold_pct": "-1"}` uses the initial defaults. It returns a `Signal` with intent and reason; it does not fetch prices, persist decisions, or place orders. See [strategy rules](docs/product.md#momentum-v1-rules) for behavior and history requirements.
+
+Run the synthetic strategy examples and edge cases without a database:
+
+```sh
+uv --directory backend run --locked pytest tests/test_momentum.py
+```
 
 Planned delivery is tracked in [implementation](docs/implementation.md).
 
