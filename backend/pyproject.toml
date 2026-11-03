@@ -31,7 +31,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "tests", "migrations", "../scripts"]
+files = ["src", "tests", "migrations"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]

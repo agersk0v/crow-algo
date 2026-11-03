@@ -22,7 +22,7 @@ backend/
     config.py, domain.py, interfaces.py
   migrations/     # Alembic revisions and bootstrap SQL
   tests/
-scripts/smoke.py   # Explicit, disposable Compose recovery check
+scripts/smoke.sh   # Explicit, disposable Compose recovery check
 docs/             # Product, architecture, implementation
 docker-compose.yml
 AGENTS.md, README.md

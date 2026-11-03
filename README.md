@@ -8,7 +8,7 @@ The first release targets one Kraken BTC/EUR momentum strategy on hourly candles
 
 The planned stack is Next.js, Python/FastAPI, and PostgreSQL, started with Docker Compose. See [architecture](docs/architecture.md) for packages, data sources, and service design.
 
-The repository follows the crow-fitness layout: `backend/` contains the Python package, tooling, migrations, Dockerfile, and tests; `scripts/smoke.py` checks disposable Compose installations; `docs/` holds specifications. `frontend/` will be added with the GUI. See [repository layout](docs/architecture.md#repository-layout).
+The repository follows the crow-fitness layout: `backend/` contains the Python package, tooling, migrations, Dockerfile, and tests; `scripts/smoke.sh` checks disposable Compose installations; `docs/` holds specifications. `frontend/` will be added with the GUI. See [repository layout](docs/architecture.md#repository-layout).
 
 ## Documentation
 
@@ -59,9 +59,10 @@ Use Python 3.12 and [uv](https://docs.astral.sh/uv/) 0.12.23. From the repositor
 
 ```sh
 uv --directory backend sync --locked
-uv --directory backend run --locked ruff check --config pyproject.toml . ../scripts
-uv --directory backend run --locked ruff format --config pyproject.toml --check . ../scripts
+uv --directory backend run --locked ruff check --config pyproject.toml .
+uv --directory backend run --locked ruff format --config pyproject.toml --check .
 uv --directory backend run --locked mypy
+bash -n scripts/smoke.sh
 uv --directory backend run --locked pytest
 ```
 
@@ -75,7 +76,7 @@ uv --directory backend run --locked pytest --require-postgres
 
 Use a test-only administrator able to create/drop databases and roles and terminate test sessions. Each integration test creates a randomly named database and one schema-owner login; cleanup drops only those generated resources, never the supplied administrator database. Do not use production administrator credentials. CI runs the full suite against PostgreSQL 17.7.
 
-CI also builds an isolated Compose project and verifies backend/database restart, database outage/recovery, and normal down/up persistence using `scripts/smoke.py`. That script writes a synthetic zero-budget configuration and is restricted to explicitly named `crow-test-*` projects; do not run it against an installation with existing records.
+CI also builds an isolated Compose project and verifies backend/database restart, database outage/recovery, and normal down/up persistence using `scripts/smoke.sh`. The script requires Bash, curl, and Docker Compose; database assertions use Python inside the backend container. It writes a synthetic zero-budget configuration and is restricted to explicitly named `crow-test-*` projects; do not run it against an installation with existing records.
 
 ### Database setup and migrations
 
