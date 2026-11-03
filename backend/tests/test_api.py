@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 
-from crow_algo.api import create_app
-from crow_algo.database import database_engine
+from crow_algo.api.app import create_app
+from crow_algo.storage.database import database_engine
 
 
 def test_liveness_remains_responsive_during_readiness_failure(
@@ -46,7 +46,7 @@ def test_application_disposes_its_owned_pool_without_connecting(
 ) -> None:
     engine = database_engine("postgresql+psycopg://user@unused/crow")
     disposed: list[bool] = []
-    monkeypatch.setattr("crow_algo.api.database_engine", lambda: engine)
+    monkeypatch.setattr("crow_algo.api.app.database_engine", lambda: engine)
     monkeypatch.setattr(engine, "dispose", lambda: disposed.append(True))
     with TestClient(create_app()) as client:
         assert client.get("/health/live").status_code == 200

@@ -9,7 +9,7 @@ from alembic.util.exc import CommandError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from crow_algo.database import PersistenceError, database_engine
+from crow_algo.storage.database import PersistenceError, database_engine
 
 # A migration lock is independent of the future trading-owner lock.
 MIGRATION_LOCK = 0x43524F575F4D4947

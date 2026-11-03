@@ -16,7 +16,7 @@ services:
       POSTGRES_PASSWORD: ${CROW_DB_PASSWORD:?Set CROW_DB_PASSWORD in .env}
     volumes:
       - database:/var/lib/postgresql/data
-      - ./docker/app-role.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
+      - ./backend/migrations/bootstrap.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
     healthcheck:
       test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U crow_algo -d crow_algo"]
       interval: 5s
@@ -27,7 +27,9 @@ services:
 
   backend:
     image: crow-algo-backend:local
-    build: .
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     init: true
     restart: unless-stopped
     environment:

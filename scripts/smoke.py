@@ -43,7 +43,7 @@ def main() -> None:
     wait_ready()
     backend("""
 from sqlalchemy import text
-from crow_algo.database import database_engine, save_configuration
+from crow_algo.storage.database import database_engine, save_configuration
 from crow_algo.config import Configuration
 config = Configuration.model_validate({
     'version': 1,
@@ -79,7 +79,7 @@ finally:
     wait_ready()
     backend("""
 from sqlalchemy import text
-from crow_algo.database import database_engine, load_configuration
+from crow_algo.storage.database import database_engine, load_configuration
 from pathlib import Path
 import os
 assert not Path('/app/.env').exists()

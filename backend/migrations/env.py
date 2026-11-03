@@ -3,7 +3,7 @@
 from alembic import context
 from sqlalchemy.engine import Connection
 
-from crow_algo.database import database_engine, metadata
+from crow_algo.storage.database import database_engine, metadata
 
 
 def run(connection: Connection) -> None:

@@ -5,9 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from crow_algo.api import create_app
-from crow_algo.database import PersistenceError, database_engine
-from crow_algo.migrate import MIGRATION_LOCK, upgrade_database
+from crow_algo.api.app import create_app
+from crow_algo.storage.database import PersistenceError, database_engine
+from crow_algo.storage.migrate import MIGRATION_LOCK, upgrade_database
 
 from .conftest import Database, dsn
 

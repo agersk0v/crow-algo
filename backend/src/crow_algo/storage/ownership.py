@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import URL, Connection
 from sqlalchemy.exc import SQLAlchemyError
 
-from crow_algo.database import PersistenceError, database_engine
+from crow_algo.storage.database import PersistenceError, database_engine
 
 LOCK_KEY = 0x43524F575F414C47
 

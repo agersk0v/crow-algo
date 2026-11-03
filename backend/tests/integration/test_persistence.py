@@ -15,14 +15,19 @@ from sqlalchemy import Engine, insert, text
 from sqlalchemy.exc import DBAPIError
 
 from crow_algo.config import Configuration
-from crow_algo.database import (
+from crow_algo.storage.database import (
     PersistenceError,
     configuration_versions,
     database_engine,
     load_configuration,
     save_configuration,
 )
-from crow_algo.ownership import LOCK_KEY, OwnerLock, OwnershipLost, OwnershipUnavailable
+from crow_algo.storage.ownership import (
+    LOCK_KEY,
+    OwnerLock,
+    OwnershipLost,
+    OwnershipUnavailable,
+)
 
 from .conftest import ROOT, Database, dsn
 

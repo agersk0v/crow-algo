@@ -12,7 +12,7 @@ from sqlalchemy import Engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
-from crow_algo.database import configuration_versions, database_engine
+from crow_algo.storage.database import configuration_versions, database_engine
 
 
 def create_app(

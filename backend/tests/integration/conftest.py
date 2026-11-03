@@ -14,7 +14,7 @@ from psycopg import sql
 from sqlalchemy import Engine
 from sqlalchemy.engine import URL
 
-from crow_algo.database import database_engine, database_url
+from crow_algo.storage.database import database_engine, database_url
 
 ROOT = Path(__file__).resolve().parents[2]
 

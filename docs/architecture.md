@@ -8,11 +8,33 @@ One Python trading application, one PostgreSQL database, and a web dashboard on 
 
 Flow: market data → strategy signal → allocation/risk checks → order intent → execution/reconciliation → persisted state → dashboard.
 
+## Repository layout
+
+Follow the repository-level organization of crow-fitness, using Python package conventions inside the backend:
+
+```text
+backend/
+  Dockerfile
+  pyproject.toml, uv.lock, alembic.ini
+  src/crow_algo/
+    api/          # HTTP application
+    storage/      # Database, persistence, migrations, ownership primitive
+    config.py, domain.py, interfaces.py
+  migrations/     # Alembic revisions and bootstrap SQL
+  tests/
+scripts/smoke.py   # Explicit, disposable Compose recovery check
+docs/             # Product, architecture, implementation
+docker-compose.yml
+AGENTS.md, README.md
+```
+
+Add `frontend/` for Next.js when implemented. Add runner, strategy, execution, and risk modules when those milestones need them; do not create empty feature scaffolding. Go-specific `cmd/` and `internal/` conventions are not required for this Python backend.
+
 Typed contracts, validation, PostgreSQL configuration persistence/migrations, ownership primitive, and health-only API/Compose startup are implemented. Trading and frontend remain planned; see [implementation](implementation.md) for delivery status.
 
 ## Major packages and data sources
 
-Pydantic, SQLAlchemy 2, Psycopg 3, Alembic, FastAPI, and Uvicorn are current dependencies; pytest/httpx, Ruff, and mypy support development. Versions and transitive dependencies are pinned in pyproject.toml and uv.lock. Market-data and frontend dependencies remain planned.
+Pydantic, SQLAlchemy 2, Psycopg 3, Alembic, FastAPI, and Uvicorn are current dependencies; pytest/httpx, Ruff, and mypy support development. Versions and transitive dependencies are pinned in backend/pyproject.toml and backend/uv.lock. Market-data and frontend dependencies remain planned.
 
 | Package or component | Responsibility | Source of data |
 | --- | --- | --- |
@@ -46,7 +68,7 @@ Use REST polling initially with CCXT rate limiting and bounded retries. WebSocke
 
 ### Configuration and contracts
 
-`src/crow_algo/domain.py` defines validated value/message types; `config.py` defines configuration and eligibility validation; `interfaces.py` declares strategy/execution protocols without implementations.
+`backend/src/crow_algo/domain.py` defines validated value/message types; `backend/src/crow_algo/config.py` defines configuration and eligibility validation; `backend/src/crow_algo/interfaces.py` declares strategy/execution protocols without implementations.
 
 A configuration has schema/version numbers and collections of markets, execution accounts, allocation accounts, and strategy instances. Execution accounts specify exchange, paper/live mode, common quote currency, and configured budget. Each strategy references its own allocation account, which references an execution account. These records describe limits and ownership, not actual funding or balances.
 

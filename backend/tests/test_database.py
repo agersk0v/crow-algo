@@ -2,7 +2,7 @@
 
 import pytest
 
-from crow_algo.database import PersistenceError, database_url
+from crow_algo.storage.database import PersistenceError, database_url
 
 
 @pytest.mark.parametrize(
