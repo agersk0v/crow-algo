@@ -1,14 +1,10 @@
 name: crow-algo
 
-x-app: &app
-  image: crow-algo-backend:local
-  build: .
-  init: true
-  logging: &logging
-    driver: json-file
-    options:
-      max-size: 10m
-      max-file: "3"
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
 
 services:
   db:
@@ -17,50 +13,31 @@ services:
     environment:
       POSTGRES_DB: crow_algo
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets:
-      - postgres_password
-      - migration_password
-      - runtime_password
+      POSTGRES_PASSWORD: ${CROW_DB_PASSWORD:?Set CROW_DB_PASSWORD in .env}
     volumes:
       - database:/var/lib/postgresql/data
-      - ./docker/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+      - ./docker/app-role.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
     healthcheck:
-      test: [CMD-SHELL, "pg_isready -U postgres -d crow_algo"]
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U crow_algo -d crow_algo"]
       interval: 5s
       timeout: 3s
       retries: 12
       start_period: 10s
     logging: *logging
 
-  migrate:
-    <<: *app
-    restart: "no"
-    command: [python, -m, crow_algo.migrate]
-    environment:
-      CROW_MIGRATION_DATABASE_URL: postgresql+psycopg://crow_migrate@db:5432/crow_algo
-      CROW_MIGRATION_DATABASE_PASSWORD_FILE: /run/secrets/migration_password
-    secrets:
-      - migration_password
-    depends_on:
-      db:
-        condition: service_healthy
-
   backend:
-    <<: *app
+    image: crow-algo-backend:local
+    build: .
+    init: true
     restart: unless-stopped
     environment:
-      CROW_DATABASE_URL: postgresql+psycopg://crow_runtime@db:5432/crow_algo
-      CROW_DATABASE_PASSWORD_FILE: /run/secrets/runtime_password
-    secrets:
-      - runtime_password
+      CROW_DATABASE_URL: postgresql+psycopg://crow_algo@db:5432/crow_algo
+      PGPASSWORD: ${CROW_DB_PASSWORD:?Set CROW_DB_PASSWORD in .env}
     ports:
       - "127.0.0.1:${CROW_API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.build_opener(urllib.request.ProxyHandler({})).open('http://127.0.0.1:8000/health/ready', timeout=2).close()"]
       interval: 5s
@@ -68,14 +45,7 @@ services:
       retries: 6
       start_period: 10s
     stop_grace_period: 15s
+    logging: *logging
 
 volumes:
   database:
-
-secrets:
-  postgres_password:
-    file: ./.secrets/postgres.txt
-  migration_password:
-    file: ./.secrets/migration.txt
-  runtime_password:
-    file: ./.secrets/runtime.txt

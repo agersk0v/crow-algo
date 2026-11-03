@@ -1,9 +1,9 @@
-"""Use an explicitly supplied migration connection or migration-role URL."""
+"""Use an explicitly supplied migration connection or application URL."""
 
 from alembic import context
 from sqlalchemy.engine import Connection
 
-from crow_algo.database import database_engine, database_url, metadata
+from crow_algo.database import database_engine, metadata
 
 
 def run(connection: Connection) -> None:
@@ -18,7 +18,7 @@ if provided is not None:
 elif context.is_offline_mode():
     raise RuntimeError("offline migrations are not supported")
 else:
-    engine = database_engine(database_url(migration=True))
+    engine = database_engine()
     try:
         with engine.connect() as connection:
             run(connection)

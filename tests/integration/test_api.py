@@ -4,7 +4,6 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
-from sqlalchemy.exc import DBAPIError
 
 from crow_algo.api import create_app
 from crow_algo.database import PersistenceError, database_engine
@@ -19,24 +18,24 @@ def test_readiness_tracks_migration_state_without_writes_or_ownership(
     database: Database, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv(
-        "CROW_MIGRATION_DATABASE_URL",
-        database.migration_url.render_as_string(hide_password=False),
+        "CROW_DATABASE_URL",
+        database.app_url.render_as_string(hide_password=False),
     )
-    engine = database_engine(database.runtime_url)
+    engine = database_engine(database.app_url)
     try:
         with TestClient(create_app(engine)) as client:
             assert client.get("/health/live").status_code == 200
             assert client.get("/health/ready").status_code == 503
             for _ in range(2):
-                upgrade_database(runtime_role=str(database.runtime_url.username))
+                upgrade_database()
             assert client.get("/health/ready").json() == {
                 "status": "ready",
                 "trading_enabled": False,
             }
-            with psycopg.connect(dsn(database.migration_url)) as connection:
+            with psycopg.connect(dsn(database.app_url)) as connection:
                 connection.execute("UPDATE alembic_version SET version_num='future'")
             assert client.get("/health/ready").status_code == 503
-            with psycopg.connect(dsn(database.migration_url)) as connection:
+            with psycopg.connect(dsn(database.app_url)) as connection:
                 connection.execute("UPDATE alembic_version SET version_num='0001'")
             assert client.get("/health/ready").status_code == 200
         with engine.connect() as connection:
@@ -60,32 +59,14 @@ def test_readiness_tracks_migration_state_without_writes_or_ownership(
         engine.dispose()
 
 
-def test_migration_and_grants_roll_back_together(
-    database: Database, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv(
-        "CROW_MIGRATION_DATABASE_URL",
-        database.migration_url.render_as_string(hide_password=False),
-    )
-    with pytest.raises(DBAPIError):
-        upgrade_database(runtime_role="missing_role")
-    with psycopg.connect(dsn(database.migration_url)) as connection:
-        assert connection.execute(
-            "SELECT to_regclass('configuration_versions')"
-        ).fetchone() == (None,)
-        assert connection.execute(
-            "SELECT to_regclass('alembic_version')"
-        ).fetchone() == (None,)
-
-
 def test_concurrent_migration_is_rejected(
     database: Database, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv(
-        "CROW_MIGRATION_DATABASE_URL",
-        database.migration_url.render_as_string(hide_password=False),
+        "CROW_DATABASE_URL",
+        database.app_url.render_as_string(hide_password=False),
     )
-    with psycopg.connect(dsn(database.migration_url)) as owner:
+    with psycopg.connect(dsn(database.app_url)) as owner:
         owner.execute("SELECT pg_advisory_xact_lock(%s)", (MIGRATION_LOCK,))
         with pytest.raises(PersistenceError, match="another migration"):
-            upgrade_database(runtime_role=str(database.runtime_url.username))
+            upgrade_database()

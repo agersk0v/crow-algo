@@ -85,7 +85,7 @@ def test_roundtrip_and_repeated_migration_preserve_exact_records(
     )
     assert created_at.tzinfo is not None
     # Reopen a fresh pool, as a new process would, without resetting state.
-    reopened = database_engine(database.runtime_url)
+    reopened = database_engine(database.app_url)
     try:
         with reopened.connect() as connection:
             assert load_configuration(connection, 1) == original
@@ -121,11 +121,10 @@ def test_mutated_configuration_is_revalidated_before_write(runtime: Engine) -> N
         )
 
 
-def test_cli_migration_uses_migration_credentials(database: Database) -> None:
+def test_cli_migration_uses_application_credentials(database: Database) -> None:
     environment = os.environ.copy()
-    environment.pop("CROW_DATABASE_URL", None)
-    environment["CROW_MIGRATION_DATABASE_URL"] = (
-        database.migration_url.render_as_string(hide_password=False)
+    environment["CROW_DATABASE_URL"] = database.app_url.render_as_string(
+        hide_password=False
     )
     for operation in ("upgrade", "upgrade", "current"):
         result = subprocess.run(
@@ -138,8 +137,7 @@ def test_cli_migration_uses_migration_credentials(database: Database) -> None:
             timeout=20,
         )
         assert result.returncode == 0, "migration CLI failed"
-    database.grant_runtime()
-    engine = database_engine(database.runtime_url)
+    engine = database_engine(database.app_url)
     try:
         with engine.begin() as connection:
             save_configuration(connection, sample())
@@ -170,34 +168,13 @@ def test_database_checks_reject_invalid_snapshots(
             )
 
 
-@pytest.mark.parametrize(
-    "statement",
-    [
-        "DELETE FROM configuration_versions",
-        "UPDATE configuration_versions SET document='{}'::jsonb",
-        "ALTER TABLE configuration_versions ADD COLUMN forbidden integer",
-        "CREATE TABLE public.forbidden (id integer)",
-    ],
-)
-def test_runtime_role_cannot_delete_rewrite_or_change_schema(
-    runtime: Engine, statement: str
-) -> None:
-    with runtime.begin() as connection:
-        save_configuration(connection, sample())
-    with pytest.raises(DBAPIError):
-        with runtime.begin() as connection:
-            connection.execute(text(statement))
-    with runtime.connect() as connection:
-        assert load_configuration(connection, 1) == sample()
-
-
 def test_failed_migration_does_not_remove_existing_tables(database: Database) -> None:
-    with psycopg.connect(dsn(database.migration_url), connect_timeout=5) as connection:
+    with psycopg.connect(dsn(database.app_url), connect_timeout=5) as connection:
         connection.execute("CREATE TABLE configuration_versions (sentinel text)")
         connection.execute("INSERT INTO configuration_versions VALUES ('keep')")
     with pytest.raises(DBAPIError):
         database.migrate()
-    with psycopg.connect(dsn(database.migration_url), connect_timeout=5) as connection:
+    with psycopg.connect(dsn(database.app_url), connect_timeout=5) as connection:
         assert connection.execute(
             "SELECT * FROM configuration_versions"
         ).fetchone() == ("keep",)
@@ -206,11 +183,27 @@ def test_failed_migration_does_not_remove_existing_tables(database: Database) ->
         ).fetchone() == (None,)
 
 
+def test_application_owns_schema_without_cluster_administration(
+    runtime: Engine,
+) -> None:
+    with runtime.begin() as connection:
+        privileges = connection.execute(
+            text(
+                "SELECT rolsuper, rolcreatedb, rolcreaterole, "
+                "rolreplication, rolbypassrls "
+                "FROM pg_roles WHERE rolname=current_user"
+            )
+        ).one()
+        assert privileges == (False, False, False, False, False)
+        connection.execute(text("CREATE TABLE schema_change_check (id integer)"))
+        connection.execute(text("DROP TABLE schema_change_check"))
+
+
 def test_destructive_downgrade_is_refused(database: Database, runtime: Engine) -> None:
     with runtime.begin() as connection:
         save_configuration(connection, sample())
     settings = Config(str(ROOT / "alembic.ini"))
-    engine = database_engine(database.migration_url)
+    engine = database_engine(database.app_url)
     try:
         with engine.begin() as connection:
             settings.attributes["connection"] = connection
@@ -223,20 +216,20 @@ def test_destructive_downgrade_is_refused(database: Database, runtime: Engine) -
 
 
 def test_single_owner_release_and_unpooled_session(database: Database) -> None:
-    with OwnerLock(database.runtime_url) as first:
+    with OwnerLock(database.app_url) as first:
         first.check()
         with pytest.raises(OwnershipUnavailable, match="another session"):
-            with OwnerLock(database.runtime_url):
+            with OwnerLock(database.app_url):
                 pytest.fail("duplicate owner was allowed")
         first.check()
     with pytest.raises(OwnershipLost):
         first.check()
-    with OwnerLock(database.runtime_url) as replacement:
+    with OwnerLock(database.app_url) as replacement:
         replacement.check()
 
 
 def test_terminated_session_loses_ownership_permanently(database: Database) -> None:
-    with OwnerLock(database.runtime_url) as owner:
+    with OwnerLock(database.app_url) as owner:
         owner.check()
         with psycopg.connect(
             dsn(database.admin_url), autocommit=True, connect_timeout=5
@@ -254,7 +247,7 @@ def test_terminated_session_loses_ownership_permanently(database: Database) -> N
             ).fetchone() == (True,)
         with pytest.raises(OwnershipLost):
             owner.check()
-        with OwnerLock(database.runtime_url) as replacement:
+        with OwnerLock(database.app_url) as replacement:
             replacement.check()
             with pytest.raises(OwnershipLost):
                 owner.check()

@@ -82,13 +82,19 @@ from sqlalchemy import text
 from crow_algo.database import database_engine, load_configuration
 from pathlib import Path
 import os
-assert not Path('/app/.secrets').exists()
-assert set(p.name for p in Path('/run/secrets').iterdir()) == {'runtime_password'}
+assert not Path('/app/.env').exists()
 assert not any(key.startswith('CROW_MIGRATION_') for key in os.environ)
 engine = database_engine()
 try:
     with engine.connect() as connection:
         assert load_configuration(connection, 1).execution_accounts[0].budget == 0
+        assert connection.execute(text(
+            'SELECT rolsuper, rolcreatedb, rolcreaterole FROM pg_roles '
+            'WHERE rolname=current_user'
+        )).one() == (False, False, False)
+        assert set(connection.execute(text(
+            'SELECT rolname FROM pg_roles WHERE rolcanlogin'
+        )).scalars()) == {'crow_algo'}
         query = text('SELECT count(*) FROM configuration_versions')
         assert connection.execute(query).scalar_one() == 1
         assert set(connection.execute(text(
@@ -104,10 +110,14 @@ finally:
     history = subprocess.check_output(
         ["docker", "history", "--no-trunc", "crow-algo-backend:local"], timeout=30
     )
-    for path in Path(".secrets").glob("*.txt"):
-        password = path.read_bytes().strip()
-        if password and any(password in output for output in (logs, image, history)):
-            raise RuntimeError("credential found in logs or image metadata")
+    values = dict(
+        line.split("=", 1)
+        for line in Path(".env").read_text().splitlines()
+        if line and not line.startswith("#")
+    )
+    password = os.environ.get("CROW_DB_PASSWORD", values["CROW_DB_PASSWORD"]).encode()
+    if password and any(password in output for output in (logs, image, history)):
+        raise RuntimeError("credential found in logs or image metadata")
     print("Compose restart, outage/recovery, and persistence checks passed.")
 
 

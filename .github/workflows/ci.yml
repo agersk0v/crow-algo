@@ -48,7 +48,13 @@ jobs:
         env:
           CROW_API_PORT: "18004"
         run: |
-          python scripts/init_secrets.py
+          python - <<'PY'
+          from pathlib import Path
+          import secrets
+          path = Path('.env')
+          path.write_text('CROW_DB_PASSWORD=' + secrets.token_hex(32) + '\n')
+          path.chmod(0o600)
+          PY
           docker compose -p crow-test-ci config --quiet
           docker compose -p crow-test-ci up -d --build --wait --wait-timeout 90
       - name: Verify Compose recovery and persistence
@@ -58,7 +64,7 @@ jobs:
         run: python scripts/check_compose.py
       - name: Collect Compose logs
         if: failure()
-        run: docker compose -p crow-test-ci logs --no-color --tail=100
+        run: if [ -f .env ]; then docker compose -p crow-test-ci logs --no-color --tail=100; fi
       - name: Remove disposable Compose installation
         if: always()
-        run: docker compose -p crow-test-ci down --volumes
+        run: if [ -f .env ]; then docker compose -p crow-test-ci down --volumes; fi

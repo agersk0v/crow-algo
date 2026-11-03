@@ -14,7 +14,7 @@ Resolve each item in the implementing PR before merge, with explicit behavior, d
 | Missing-quote behavior, paper order expiry/cancellation, fee/slippage assumptions | 2: offline paper core; validate provider assumptions in 3 |
 | Missed candles, signal eligibility after outages, freshness limits, and quote polling cadence | 3: public-market operation |
 | Owner authentication, sessions, API enforcement, and write-request protection | 4: GUI, before exposure |
-| Hosting provider, backup schedule/retention, and deployment configuration | 5: continuous hosting |
+| Hosting provider, backup schedule/retention, production credentials/admin access/role isolation, and deployment configuration | 5: continuous hosting |
 
 ## 1. Foundation and domain
 
@@ -22,9 +22,9 @@ Tracked by [#1](https://github.com/agersk0v/crow-algo/issues/1), delivered seque
 
 - [x] Set up Python 3.12+, pinned dependencies, lint/format/type/test commands, and CI workflow.
 - [x] Add PostgreSQL configuration persistence using SQLAlchemy 2, Psycopg 3, and Alembic migrations (#3).
-- [x] Add isolated PostgreSQL integration tests for migrations, rollback, schema/role constraints, duplicate-owner rejection, release, and ownership loss.
+- [x] Add isolated PostgreSQL integration tests for migrations, rollback, schema constraints, duplicate-owner rejection, release, and ownership loss.
 - [x] Add the local PostgreSQL/backend Compose setup and health endpoints (#4). Financial allocation/reservation locking follows in milestone 2 when those records exist.
-- [x] Add pinned non-root application image, one-shot migration/grant step, runtime secrets, health checks, and graceful lifecycle.
+- [x] Add pinned non-root application image, migration-before-HTTP startup, one login/password, health checks, and graceful lifecycle.
 - [x] Define market, strategy-instance, allocation/execution-account/mode, configuration-version, order, and fill identities.
 - [x] Define small strategy/execution interfaces and validate configuration without hardcoded pair, interval, or budget.
 
@@ -72,10 +72,10 @@ Acceptance: displayed amounts match the ledger; errors and rejected commands are
 
 Production acceptance depends on milestones 3–4; add local Compose infrastructure earlier as services become runnable.
 
-- [x] Package the local backend/database with a separate migration step; no frontend or trading loop yet.
+- [x] Package the local backend/database with migrations before HTTP startup; no frontend or trading loop yet.
 - [ ] Add Next.js and its internal API connection when the GUI is runnable.
 - [ ] Run one backend process/API worker and one trading-loop owner; keep trading independent of frontend restarts.
-- [x] Add database-owned persistent storage, database/backend health checks, one migration step, graceful shutdown, restart policies, and bounded container logs. Database port is internal.
+- [x] Add database-owned persistent storage, database/backend health checks, migration-before-HTTP startup, graceful shutdown, restart policies, and bounded container logs. Database port is internal.
 - [ ] Add frontend health checks with the GUI.
 - [x] Verify local Compose configuration/build/startup, health endpoints, database outage/recovery, and record retention across restart/down-up.
 - [ ] Verify frontend API routing and trade-safe restart after those features exist.

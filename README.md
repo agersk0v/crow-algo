@@ -19,10 +19,16 @@ The planned stack is Next.js, Python/FastAPI, and PostgreSQL, started with Docke
 
 ### Start locally with Docker Compose
 
-Use Docker with Compose v2 and Python 3.12+ for initial credential generation. From the repository root:
+Use Docker with Compose v2. From the repository root:
 
 ```sh
-python3 scripts/init_secrets.py
+cp .env.example .env
+chmod 600 .env
+```
+
+Set a unique `CROW_DB_PASSWORD` in `.env`, then start:
+
+```sh
 docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 90
 curl http://127.0.0.1:8000/health/live
@@ -31,20 +37,19 @@ docker compose ps
 docker compose logs -f --tail=100
 ```
 
-Credential generation runs once and refuses to overwrite existing files. `.secrets/` is ignored by Git and excluded from image builds. Keep this directory private and preserve it with the database: regenerating files does not change existing database passwords. The parent directory is mode 0700; individual read-only files are readable by non-root container users when mounted as Compose secrets.
+There are two services: `db` and `backend`. One application login owns the database schema; minimal initialization creates that normal login and disables PostgreSQL's built-in administrator login. The backend applies versioned Alembic migrations before starting HTTP. No separate migration container, account grants, credential generator, or password files are needed. PostgreSQL has no published port; the API binds to localhost. Set `CROW_API_PORT` in `.env` to use another HTTP port.
 
-The database initializes separate migration/runtime logins on an empty volume. A one-shot `migrate` service applies schema changes and grants before the backend starts. PostgreSQL has no published host port, and the backend is available only on localhost. Set `CROW_API_PORT` to choose another API port.
+`.env` is ignored by Git and excluded from image builds. Keep it private: the password is injected at runtime and is visible to Docker/environment administrators. Changing it does not change the password in an existing database volume. Earlier versions of this PR used separate logins; existing volumes require an explicit ownership/credential migration, not deletion or automatic reset.
 
-Liveness returns 200 while the HTTP process responds. Readiness returns 200 only when the database and expected migration state are usable, otherwise 503. Both report `trading_enabled: false`; neither means a bot is trading. No login or write/trading endpoints exist; do not expose this installation publicly.
+Liveness returns 200 while HTTP responds. Readiness returns 200 only when database/schema access is usable, otherwise 503. Both report `trading_enabled: false`. No authentication or write/trading endpoints exist; this is a local development installation, not a public/live deployment.
 
 ```sh
 docker compose restart backend
-docker compose run --rm migrate
 docker compose down
 docker compose up -d --build --wait --wait-timeout 90
 ```
 
-Normal shutdown/rebuild preserves the named PostgreSQL volume. **Do not use `down --volumes` or delete `.secrets/` on an installation you need to retain.** Backup/restore procedures and production deployment follow in their hosting milestone.
+Normal shutdown/rebuild preserves the named PostgreSQL volume. **Do not use `down --volumes` on an installation you need to retain.** Backup/restore, production credentials, and separation of database administration follow in the hosting/live milestones.
 
 ### Development checks
 
@@ -66,32 +71,22 @@ For a database-free check, run `uv run --locked pytest -m 'not integration'`. Fo
 uv run --locked pytest --require-postgres
 ```
 
-Use a test-only administrator able to create/drop databases and roles and terminate test sessions. Each integration test creates a randomly named database and migration/runtime roles; cleanup drops only those generated resources, never the supplied administrator database. Do not use production administrator credentials. CI runs the full suite against PostgreSQL 17.7.
+Use a test-only administrator able to create/drop databases and roles and terminate test sessions. Each integration test creates a randomly named database and one schema-owner login; cleanup drops only those generated resources, never the supplied administrator database. Do not use production administrator credentials. CI runs the full suite against PostgreSQL 17.7.
 
 CI also builds an isolated Compose project and verifies backend/database restart, database outage/recovery, and normal down/up persistence using `scripts/check_compose.py`. That script writes a synthetic zero-budget configuration and is restricted to explicitly named `crow-test-*` projects; do not run it against an installation with existing records.
 
 ### Database setup and migrations
 
-Provision a database owned by a migration login and a separate runtime login with no administrative privileges. Example SQL for an administrator on a new local database server:
+Compose initializes the database automatically. Outside Compose, use a schema-owner login and set `CROW_DATABASE_URL` with the `postgresql+psycopg` driver. Keep passwords out of URLs and shell history; supply authentication through libpq's protected password file or `PGPASSWORD`. There is no separate migration URL.
 
-```sql
-CREATE ROLE crow_migrate LOGIN;
-CREATE ROLE crow_runtime LOGIN;
-CREATE DATABASE crow_algo OWNER crow_migrate;
-```
-
-Set login passwords separately using protected credential tooling. Supply `CROW_MIGRATION_DATABASE_URL` for migration commands and `CROW_DATABASE_URL` for runtime code, both with the `postgresql+psycopg` driver. For example, a URL without embedded credentials is `postgresql+psycopg://crow_runtime@localhost:5432/crow_algo`; use protected libpq password files or injected secrets for authentication. The migration command does not fall back to runtime credentials.
-
-Alternatively, set `CROW_DATABASE_PASSWORD_FILE` / `CROW_MIGRATION_DATABASE_PASSWORD_FILE` to supply passwords through files instead of URLs. Compose wires these automatically; the backend never receives migration credentials.
-
-Outside Compose, initialize/upgrade and grant the default `crow_runtime` role with the migration URL configured:
+From the repository root:
 
 ```sh
 uv run --locked python -m crow_algo.migrate
 uv run --locked alembic current
 ```
 
-The migration step grants runtime schema usage, SELECT/INSERT on configuration snapshots, and SELECT on migration metadata. Do not grant runtime schema creation, table ownership, UPDATE, or DELETE. New databases should not grant PUBLIC schema-creation privileges. Migrations never reset existing records, and destructive downgrades are refused. CLI commands initialize schema only; they create no funding, positions, or orders.
+Migrations are transactional and serialized, preserve existing records, and refuse destructive downgrades. The application account can change its schema; restricted migration/runtime accounts are deferred until operational needs justify them. Schema initialization creates no funding, positions, or orders.
 
 `database_engine()` reads the runtime URL. Within `engine.begin()`, `save_configuration(connection, config)` appends a validated version and `load_configuration(connection, version)` reads it. Reusing a version is an error; the caller must roll back failed transactions. See [storage design](doc/architecture.md#storage-and-recovery) for scope and ownership semantics.
 

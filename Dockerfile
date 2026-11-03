@@ -15,4 +15,4 @@ ENV PATH="/app/.venv/bin:$PATH" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY --from=build /app /app
 USER 10001:10001
 EXPOSE 8000
-CMD ["uvicorn", "crow_algo.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--timeout-graceful-shutdown", "10"]
+CMD ["sh", "-c", "python -m crow_algo.migrate && exec uvicorn crow_algo.api:create_app --factory --host 0.0.0.0 --port 8000 --workers 1 --timeout-graceful-shutdown 10"]
