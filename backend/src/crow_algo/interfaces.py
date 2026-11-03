@@ -1,4 +1,4 @@
-"""Small contracts for future implementations; no adapters or registry yet."""
+"""Small strategy/execution contracts; no adapters or registry."""
 
 from datetime import datetime
 from typing import Protocol

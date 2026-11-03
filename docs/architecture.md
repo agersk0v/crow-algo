@@ -19,6 +19,7 @@ backend/
   src/crow_algo/
     api/          # HTTP application
     storage/      # Database, persistence, migrations, ownership primitive
+    strategies/   # Pure offline signal evaluation
     config.py, domain.py, interfaces.py
   migrations/     # Alembic revisions and bootstrap SQL
   tests/
@@ -28,9 +29,9 @@ docker-compose.yml
 AGENTS.md, README.md
 ```
 
-Add `frontend/` for Next.js when implemented. Add runner, strategy, execution, and risk modules when those milestones need them; do not create empty feature scaffolding. Go-specific `cmd/` and `internal/` conventions are not required for this Python backend.
+Add `frontend/` for Next.js when implemented. Add runner, execution, and risk modules when those milestones need them; do not create empty feature scaffolding. Go-specific `cmd/` and `internal/` conventions are not required for this Python backend.
 
-Typed contracts, validation, PostgreSQL configuration persistence/migrations, ownership primitive, and health-only API/Compose startup are implemented. Trading and frontend remain planned; see [implementation](implementation.md) for delivery status.
+Typed contracts, validation, PostgreSQL configuration persistence/migrations, ownership primitive, health-only API/Compose startup, and offline momentum evaluation are implemented. Order execution and frontend remain planned; see [implementation](implementation.md) for delivery status.
 
 ## Major packages and data sources
 
@@ -68,15 +69,23 @@ Use REST polling initially with CCXT rate limiting and bounded retries. WebSocke
 
 ### Configuration and contracts
 
-`backend/src/crow_algo/domain.py` defines validated value/message types; `backend/src/crow_algo/config.py` defines configuration and eligibility validation; `backend/src/crow_algo/interfaces.py` declares strategy/execution protocols without implementations.
+`backend/src/crow_algo/domain.py` defines validated value/message types; `backend/src/crow_algo/config.py` defines configuration and eligibility validation; `backend/src/crow_algo/interfaces.py` declares strategy/execution protocols. Momentum v1 implements the strategy protocol in `backend/src/crow_algo/strategies/momentum.py`.
 
 A configuration has schema/version numbers and collections of markets, execution accounts, allocation accounts, and strategy instances. Execution accounts specify exchange, paper/live mode, common quote currency, and configured budget. Each strategy references its own allocation account, which references an execution account. These records describe limits and ownership, not actual funding or balances.
 
 Validate unique IDs and market identities, references, exchange/currency compatibility, separate strategy allocations, and allocation totals per execution account. Amounts accept decimal strings, integers, or Decimal values; reject binary floats, booleans, non-finite values, and negatives. Allocation-total comparisons are exact independently of the Decimal arithmetic context. Zero budgets are valid unfunded configuration; future order checks must still reject unaffordable trades. Timestamps require timezone information and normalize to UTC. Reject unknown configuration fields.
 
-Timeframe syntax accepts positive integer minute/hour/day/week intervals; provider support is checked when market-data integration exists. Strategy parameters are finite JSON data, with strategy-specific validation deferred to the strategy implementation. Pydantic records prevent field reassignment, but nested parameter dictionaries are not deeply immutable; future consumers must copy/validate inputs before use.
+Timeframe syntax accepts positive integer minute/hour/day/week intervals; provider support is checked when market-data integration exists. Strategy parameters are finite JSON data. Momentum v1 validates its parameters when evaluated; storing configuration does not run the strategy or validate strategy-specific settings. Pydantic records prevent field reassignment, but nested parameter dictionaries are not deeply immutable; future consumers must copy/validate inputs before use.
 
-Configuration can describe future instances and live accounts. The separate eligibility check accepts exactly one selected momentum-v1 instance, one market, and a paper execution account. It rejects missing selections and unsupported activation; it does not implement a strategy, check provider capabilities, fund accounts, or start trading. Execution protocols expose submit/reconcile/cancel messages, including partial/unknown statuses for later adapters, without defining fill policy yet.
+Configuration can describe future instances and live accounts. The separate eligibility check accepts exactly one selected momentum-v1 instance, one market, and a paper execution account. It rejects missing selections and unsupported activation; it does not evaluate a strategy, check provider capabilities, fund accounts, or start trading. Execution protocols expose submit/reconcile/cancel messages, including partial/unknown statuses for later adapters, without defining fill policy yet.
+
+### Offline strategy evaluation
+
+`MomentumStrategy.evaluate` implements the existing pure protocol with `MomentumParameters` validation and no new dependencies. User-visible rules and defaults live in [product](product.md#momentum-v1-rules). Validation errors raise `ValueError` (including Pydantic `ValidationError`); insufficient valid history returns a hold signal. Evaluation requires timezone-aware `as_of` and excludes candles closing later. All eligible candles must be chronologically ordered and non-overlapping before selecting the last N + 1; duration/continuity validation then applies only to that window, or all eligible candles if fewer exist.
+
+Infer interval duration from the first candle in the required window and verify each candle has that duration and touches its predecessor. The protocol has no timeframe argument: the future data adapter/runner must supply the configured market/timeframe and enforce provider support and freshness. No fixed hourly duration or market is embedded in the strategy.
+
+Compare `(latest - baseline) × 100` against `baseline × threshold` rather than dividing by the positive baseline. An isolated Decimal context sized from input digits/scales keeps these finite operations exact and independent of the caller's rounding context. Reasons include both closing prices, lookback, and the threshold comparison without rounding a repeating percentage into a boundary decision. Evaluation reads no clock, storage, account, or network and does not mutate inputs or deduplicate signals.
 
 ## Runtime and allocation
 
